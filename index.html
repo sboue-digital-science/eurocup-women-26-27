@@ -34,7 +34,7 @@ header p{margin:0;color:var(--bandink2);max-width:68ch}
 .filters select{width:170px}.filters #fGp{width:112px}.filters input{width:160px}.seg button{padding:0 11px}
 @media(min-width:701px){.filters>*{flex:1 1 170px}.filters>div{flex-basis:300px}.filters select,.filters #fGp{width:100%}.seg button{flex:1}}
 @media(min-width:1000px){.filters{flex-wrap:nowrap}.filters>*{flex:1 1 0}.filters>div{flex:1.7 1 0;min-width:340px}}
-@media(max-width:700px){.filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.filters>*{flex:none}}
+@media(max-width:700px){.filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}.filters select,.filters #fGp{width:100%}.filters>div,.filters>.clr{grid-column:1/-1}.seg button{flex:1;padding:0 6px}}
 .filters label{display:grid;gap:4px;font-size:13px;color:var(--bandink2)}
 select,input{font:inherit;font-size:16px;height:44px;border-radius:8px;border:1px solid #3a3b40;background:#1f2025;color:var(--bandink);padding:0 12px}
 input{width:min(240px,80vw)}
