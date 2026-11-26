@@ -188,7 +188,15 @@ const tip=document.getElementById('tip');
 let STG=[],PO=false,D,TEAMS,TC,CN,P=[],TM=[];
 const pg=(p,k)=>p.gp?p[k]/p.gp:0;
 const showTip=(e,html)=>{tip.innerHTML=html;tip.style.opacity=1;const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;x=Math.max(8,Math.min(x,innerWidth-r.width-8));if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px'};
-const hideTip=()=>tip.style.opacity=0;
+const hideTip=()=>{tip.style.opacity=0;TIPKEY=null};
+let TIPKEY=null;
+const onHover=(el,fn,key)=>{
+  el.onpointermove=e=>{if(e.pointerType!=='touch')fn(e)};
+  el.onpointerleave=e=>{if(e.pointerType!=='touch')hideTip()};
+  el.onpointerdown=e=>{if(e.pointerType==='touch'){fn(e);TIPKEY=key||el}};
+};
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&!e.target.closest('#scHit,.ab,.mh'))hideTip()},true);
+addEventListener('scroll',()=>{if(TIPKEY)hideTip()},{passive:true});
 const pname=p=>esc(p.n)+(p.gone?' †':'');
 
 let GEO,CITY,FL={},ASOF='';
@@ -302,10 +310,9 @@ function scatter(){
   // hover only the highlighted (coloured) dots when a filter is set; grey dots are context only
   const hov=sel?pts.filter(d=>d.on||d.h):pts;
   const del=d3.Delaunay.from(hov,d=>d.x,d=>d.y),r=svg.querySelector('#scHit');
-  r.onpointermove=e=>{const b=svg.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top,i=hov.length?del.find(mx,my):-1,d=hov[i];
+  onHover(r,e=>{const b=svg.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top,i=hov.length?del.find(mx,my):-1,d=hov[i];
     if(!d||Math.hypot(d.x-mx,d.y-my)>30)return hideTip();const p=d.p;
-    showTip(e,`${pname(p)}${flags(p)}${p.age!=null?` — ${Math.floor(p.age)} years`:''} — ${esc(TEAMS[p.t])}<br><b>${f1(pg(p,'eff'))}</b> eff · <b>${f1(pg(p,'min'))}</b> min · ${f1(pg(p,'pts'))} pts, ${f1(pg(p,'reb'))} reb, ${f1(pg(p,'ast'))} ast, ${f1(pg(p,'blk'))} blk, ${p.fga?f1(p.fgm/p.fga*100)+'%':'–'} FG${p.gone?'<br>† No longer on the team’s current roster':''}`)};
-  r.onpointerleave=hideTip;
+    showTip(e,`${pname(p)}${flags(p)}${p.age!=null?` — ${Math.floor(p.age)} years`:''} — ${esc(TEAMS[p.t])}<br><b>${f1(pg(p,'eff'))}</b> eff · <b>${f1(pg(p,'min'))}</b> min · ${f1(pg(p,'pts'))} pts, ${f1(pg(p,'reb'))} reb, ${f1(pg(p,'ast'))} ast, ${f1(pg(p,'blk'))} blk, ${p.fga?f1(p.fgm/p.fga*100)+'%':'–'} FG${p.gone?'<br>† No longer on the team’s current roster':''}`)});
 }
 const flags=p=>p.c.map(c=>{const n=esc(CN[c]||c);return FL[c]?`<img class="flag" src="${FL[c]}" alt="${n}" title="${n}">`:`<span class="flagx" title="${n}">${esc(c)}</span>`}).join('');
 function leaders(){
@@ -345,7 +352,7 @@ function hist(id,bins,key,lab,every,range){
   svg.innerHTML=s;
   const tn=esc(flabel());
   svg.querySelectorAll('.ab').forEach(r=>{const b=B[+r.dataset.j],n=b.n,k=b.k;
-    r.onpointermove=e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} ${lab(b.a)}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>${lab(b.a)}`);r.onpointerleave=hideTip});
+    onHover(r,e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} ${lab(b.a)}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>${lab(b.a)}`))});
   return{tm,base};
 }
 function ages(){
@@ -421,9 +428,10 @@ function map(){
     const step=now=>{const t=Math.min(1,(now-t0)/dur);MZ=ip(d3.easeCubicInOut(t));apply(MZ);if(t<1)MZraf=requestAnimationFrame(step);else MZ=Z};
     MZraf=requestAnimationFrame(step)}
   svg.querySelectorAll('.mh').forEach(c=>{const d=cl[+c.dataset.k];
-    c.onpointermove=e=>showTip(e,`<b>${d.n}</b> team${d.n>1?'s':''} · ${esc(city(d))}, ${esc(CN[TC[d.m[0]]]||TC[d.m[0]])}<br>`+d.m.map(i=>esc(TEAMS[i])+(d.n>1&&CITY[i][0]!==d.name?` (${esc(CITY[i][0])})`:'')+(on?` — ${cnt.get(i)||0} matching`:'')).join('<br>')+(d.n>1?'<br><i>Click again for the next team</i>':''));
-    c.onpointerleave=hideTip;
-    c.onclick=()=>{hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
+    onHover(c,e=>showTip(e,`<b>${d.n}</b> team${d.n>1?'s':''} · ${esc(city(d))}, ${esc(CN[TC[d.m[0]]]||TC[d.m[0]])}<br>`+d.m.map(i=>esc(TEAMS[i])+(d.n>1&&CITY[i][0]!==d.name?` (${esc(CITY[i][0])})`:'')+(on?` — ${cnt.get(i)||0} matching`:'')).join('<br>')+(d.n>1?'<br><i>Click again for the next team</i>':'')),d);
+    // touch: the first tap on a dot only shows its box; tapping the same dot again selects the team
+    let tapShown=false;c.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')tapShown=TIPKEY!==d},true);
+    c.onclick=()=>{if(tapShown){tapShown=false;return}hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
   const nc=new Set(CITY.map(c=>c[0])).size,nk=new Set(TC).size;
   const top=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c)[0]:null;
   document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+(Z.s>1?'Zoomed to the coloured places. ':canZoom?'Showing all of Europe. ':'')+'Dot size shows the number of teams in each place. Click a dot to select a team.';
