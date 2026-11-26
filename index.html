@@ -103,7 +103,7 @@ footer{color:var(--ink2);font-size:13px}
     <label>Team<select id="fTeam"><option value="-1">All 53 teams</option></select></label>
     <label>Position<select id="fPos"><option value="A">All positions</option><option value="G">Guards</option><option value="F">Forwards</option><option value="C">Centers</option></select></label>
     <label>Citizenship<select id="fCit"><option value="">All citizenships</option></select></label>
-    <label>Age range<select id="fAge"><option value="0">All ages</option><option value="15">15–19</option><option value="20">20–24</option><option value="25">25–29</option><option value="30">30–34</option><option value="35">35–39</option><option value="40">40–44</option></select></label>
+    <label>Age range<select id="fAge"><option value="0">All ages</option></select></label>
 
     <button id="fClr" class="clr" type="button">Clear filters</button>
 </div></div>
@@ -194,7 +194,10 @@ function init(){
   ct.onchange=()=>{S.cit=ct.value;update()};
   sel.onchange=()=>{S.team=+sel.value;update()};
   document.getElementById('fPos').onchange=e=>{S.pos=e.target.value;update()};
-  document.getElementById('fAge').onchange=e=>{S.age=+e.target.value;update()};
+  // age ranges in 5-year steps (15–19, 20–24, …), listing only ranges that contain at least one player
+  const ag=document.getElementById('fAge'),ar=[...new Set(D.filter(p=>p.age!=null).map(p=>Math.floor(p.age/5)*5))].sort((a,b)=>a-b);
+  ag.insertAdjacentHTML('beforeend',ar.map(a=>`<option value="${a}">${a}–${a+4}</option>`).join(''));
+  ag.onchange=e=>{S.age=+e.target.value;update()};
   document.getElementById('fClr').onclick=()=>{Object.assign(S,{age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2});lc.value='';document.getElementById('fStg').value='';ct.value='';document.getElementById('fGp').value='2';document.getElementById('fPos').value='A';document.getElementById('fAge').value='0';fillTeams();update()};
   document.getElementById('fGp').onchange=e=>{S.gp=+e.target.value;update()};
   document.getElementById('ldTabs').innerHTML=M.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.metric}">${l}</button>`).join('');
