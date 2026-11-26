@@ -61,6 +61,7 @@ main.band{padding-top:20px}
 .row .who small{color:var(--ink2);font-size:13px}
 .fgm .row{grid-template-columns:minmax(0,1fr) 116px}
 .tpct .trow{grid-template-columns:28px minmax(0,1fr) 140px}.tpct .val{display:flex;justify-content:flex-end;gap:4px}.tpct .fa{width:80px}
+.tgap{color:var(--ink2);padding:0 6px 0 22px;line-height:1.2;letter-spacing:2px}
 @media(max-width:600px){.tpct .trow{grid-template-columns:22px minmax(0,1fr) 128px}.tpct .trow .tb span{white-space:normal}.tpct .fa{width:72px}}
 .fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
 .row .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;grid-row:span 2}
@@ -370,12 +371,18 @@ const TSM=[['pts','Points per game'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'
 const TSS={pts:'Points per game',fg:'Field goal % (made/attempted)',p2:'2-point % (made/attempted)',p3:'3-point % (made/attempted)',ft:'Free throw % (made/attempted)'};
 function teams(){
   const pc=S.ts!=='pts',nt=TM.filter(t=>t.gp).length;
-  document.querySelector('.nT').textContent=`${TSS[S.ts]}, all ${nt} teams`;
+  // team-level filters (stage, league country) narrow the lists; ranks stay those of the full table
+  const tf=S.stg||S.lc,keep=i=>stgOk(i)&&(!S.lc||TC[i]===S.lc),nk=TM.filter(t=>t.gp&&keep(t.i)).length;
+  const scopeT=tf?`${nk} of ${nt} teams (${[S.stg?stn(S.stg):'',S.lc?'in '+(CN[S.lc]||S.lc):''].filter(Boolean).join(' ')}), ranked among all ${nt}`:`all ${nt} teams`;
+  document.querySelector('.nT').textContent=`${TSS[S.ts]}, ${scopeT}`;
+  document.querySelector('.nT2').textContent=`Efficiency per game, ${scopeT}`;
   for(const [id,k] of [['teams',S.ts],['teams2','epg']]){
     const pct=id==='teams'&&pc,vv=d=>pct?(d[k][1]?d[k][0]/d[k][1]:0):d[k];
     const t=TM.filter(t=>t.gp).sort((a,b)=>vv(b)-vv(a)),mx=vv(t[0])||1;
     const el=document.getElementById(id);el.classList.toggle('tpct',pct);
-    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${vv(d)/mx*100}%"></div></div><span class="val">${pct?`<span class="fp">${f1(vv(d)*100)}%</span><small class="fa">(${d[k][0]}/${d[k][1]})</small>`:f1(d[k])}</span></div>`).join('');
+    const gap='<div class="tgap" aria-hidden="true">…</div>';
+    let last=-1;
+    el.innerHTML=t.map((d,i)=>{if(tf&&!keep(d.i))return'';const g=tf&&i>last+1?gap:'';last=i;return g+`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${vv(d)/mx*100}%"></div></div><span class="val">${pct?`<span class="fp">${f1(vv(d)*100)}%</span><small class="fa">(${d[k][0]}/${d[k][1]})</small>`:f1(d[k])}</span></div>`}).join('')+(tf&&last<t.length-1?gap:'');
     el.querySelectorAll('.trow').forEach(r=>{const go=()=>pickTeam(+r.dataset.i);r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
     const on=el.querySelector('.on');if(on)el.scrollTop=on.offsetTop-el.offsetTop-el.clientHeight/2;
   }
