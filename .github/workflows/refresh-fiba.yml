@@ -1,10 +1,10 @@
-# Re-pulls EuroCup Women data from FIBA every day and commits the new data.json.
+# Re-pulls EuroCup Women data from FIBA every Friday morning and commits the new data.json.
 # Lives in .github/workflows/ of the GitHub repository that hosts the dashboard files.
 name: Refresh FIBA data
 
 on:
   schedule:
-    - cron: '23 4 * * *'   # every day at 04:23 UTC (05:23 Swiss winter time)
+    - cron: '23 4 * * 5'   # every Friday at 04:23 UTC (05:23 Swiss winter time, 06:23 summer time)
   workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
 
 permissions:

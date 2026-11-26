@@ -9,7 +9,7 @@ Interactive D3 dashboard of FIBA EuroCup Women 2026-27 players and teams.
 | `europe.json` | basemap (Natural Earth via world-atlas) |
 | `flags.json` | small flag images (flag-icons) |
 | `refresh-fiba.mjs` | rebuilds `data.json` from FIBA's pages |
-| `.github/workflows/refresh-fiba.yml` | runs the refresh every day |
+| `.github/workflows/refresh-fiba.yml` | runs the refresh every Friday morning |
 
 ## Data refresh
 
@@ -26,11 +26,11 @@ To try it on two teams first:
 `FIBA_ONLY=bcf-elfic-fribourg,saarlouis-royals node refresh-fiba.mjs test.json`
 (on Windows PowerShell: `$env:FIBA_ONLY="bcf-elfic-fribourg,saarlouis-royals"; node refresh-fiba.mjs test.json`)
 
-## Run it automatically every day (GitHub)
+## Run it automatically every week (GitHub)
 1. Put the dashboard files (`index.html`, `data.json`, `europe.json`, `flags.json`,
    `refresh-fiba.mjs`) in a GitHub repository, plus `.github/workflows/refresh-fiba.yml`.
 2. In the repository: Settings → Actions → General → Workflow permissions → "Read and write".
-3. The job runs daily at 04:23 UTC; the Actions tab has a "Run workflow" button to run it now.
+3. The job runs every Friday at 04:23 UTC (05:23 in Switzerland in winter), after the Thursday games; the Actions tab has a "Run workflow" button to run it now.
 
 ## What needs a human
 - **Cities**: FIBA doesn't publish them. They are kept from the existing `data.json`.
