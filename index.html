@@ -71,7 +71,7 @@ main.band{padding-top:20px}
 .trow:hover{background:var(--plane)}
 .trow .rk{color:var(--ink2);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
 .trow .tb{display:grid;gap:2px}.trow .tb span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trow .bar{background:var(--lo)}.trow.on .bar{background:var(--hi)}.trow.on span{font-weight:600}
+.trow .bar{background:var(--hi)}.trow.on{background:var(--plane)}.trow.on span{font-weight:600}
 .trow .val{text-align:right;font-variant-numeric:tabular-nums;font-size:14px}
 .teams{max-height:460px;overflow-y:auto;padding-right:4px}
 .scroll{overflow-x:auto}
@@ -286,7 +286,7 @@ function leaders(){
   const k=S.metric,fg=k==='fg',lab=M.find(m=>m[0]===k)[1];
   const v=p=>fg?(p.fga?p.fgm/p.fga:0):pg(p,k),fmt=x=>fg?f1(x*100)+'%':f1(x);
   const ps=P.filter(p=>inScope(p)&&(!fg||(p.gp&&p.fga/p.gp>=3))).sort((a,b)=>v(b)-v(a)).slice(0,10);
-  document.getElementById('ldT').textContent=fg?'Field goal %':lab+' per game';
+  document.getElementById('ldT').textContent=fg?'Field goal %':k==='eff'?'Player efficiency per game':lab+' per game';
   document.getElementById('ldS').textContent='Top 10 '+scope()+`, ${S.gp}+ games`+(fg?', at least 3 field goal attempts per game.':'.');
   const mx=d3.max(ps,v)||1;
   document.getElementById('leaders').classList.toggle('fgm',fg);
