@@ -154,7 +154,7 @@ footer{color:var(--ink2);font-size:13px}
   <div class="grid grid2">
     <div class="card">
       <h2>Minutes against efficiency</h2>
-      <p class="sub">Each dot is a player: minutes per game across, FIBA efficiency per game up.</p>
+      <p class="sub" id="scS">Each dot is a player: minutes per game across, FIBA efficiency per game up.</p>
       <div class="key" id="scKey"></div>
       <div class="fig" id="sc"><svg role="img" aria-label="Scatter of minutes per game against efficiency per game"></svg></div>
     </div>
@@ -188,7 +188,7 @@ Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r
 
 function init(){
   const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
-  document.getElementById('title').textContent=`${played.length} players from ${nc} countries in ${nt} teams have stepped on court so far`;
+  document.getElementById('title').textContent=`${played.length} players from ${nc} nationalities in ${nt} teams have stepped on court so far`;
   document.getElementById('upd').textContent='last updated '+ASOF;document.getElementById('asof2').textContent=ASOF;
   document.querySelector('.nT2').textContent=`Efficiency per game, all ${nt} teams`;
   const sel=document.getElementById('fTeam'),lc=document.getElementById('fLc'),ct=document.getElementById('fCit');
@@ -202,6 +202,7 @@ function init(){
   const sg=document.getElementById('fStg');sg.onchange=()=>{S.stg=+sg.value;if(S.team>=0&&!stgOk(S.team))S.team=-1;fillTeams();update()};
   ct.onchange=()=>{S.cit=ct.value;update()};
   sel.onchange=()=>{S.team=+sel.value;update()};
+  if(D.some(p=>p.p==='U'))document.getElementById('fPos').insertAdjacentHTML('beforeend','<option value="U">Not specified</option>');
   document.getElementById('fPos').onchange=e=>{S.pos=e.target.value;update()};
   // age ranges in 5-year steps (15–19, 20–24, …), listing only ranges that contain at least one player
   const ag=document.getElementById('fAge'),ar=[...new Set(D.filter(p=>p.age!=null).map(p=>Math.floor(p.age/5)*5))].sort((a,b)=>a-b);
@@ -227,6 +228,8 @@ function fillTeams(){
   sel.innerHTML=`<option value="-1">All ${ids.length} ${S.stg?esc(stn(S.stg)):'teams'}${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
   sel.value=S.team;
 }
+const PNOUN={A:['player','players'],G:['guard','guards'],F:['forward','forwards'],C:['center','centers'],U:['player','players']};
+const desc=n=>`${PNOUN[S.pos][n===1?0:1]} with ${S.gp}+ games ${scope()}${S.pos==='U'?', position not specified':''}`;
 const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+stn(S.stg)+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'')+(S.age?`, aged ${S.age}–${S.age+4}`:'');
 function update(){
   P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&ageOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
@@ -249,7 +252,7 @@ const inScope=p=>S.team<0||p.t===S.team;
 function figs(){
   const ps=P.filter(inScope),c=new Set(ps.flatMap(p=>p.c));
   const multi=ps.filter(p=>p.c.length>1).length;
-  const items=[[ps.length,`player${ps.length===1?'':'s'} with ${S.gp}+ games`+(filtOn()?' '+scope():'')],
+  const items=[[ps.length,desc(ps.length)],
     [ps.length?f1(d3.median(ps,p=>p.age)):'–','median age'],
     [ps.length?Math.round(d3.mean(ps.filter(p=>p.h),p=>p.h)||0)+' cm':'–','average height, where listed'],
     [c.size,'citizenships'],[ps.length?pct(multi/ps.length):'–','hold two or more passports']];
@@ -277,6 +280,8 @@ function scatter(){
   s+=lab.filter(d=>!seen.has(d)&&seen.add(d)).map(d=>{const left=d.x>W-140;return`<text x="${d.x+(left?-9:9)}" y="${d.y}" dy=".32em" text-anchor="${left?'end':'start'}" font-size="13" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${esc(d.p.n.split(' ').slice(-1)[0])}</text>`}).join('');
   s+=`<rect id="scHit" x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent"/>`;
   svg.innerHTML=s;
+  const nsel=pts.filter(d=>d.on&&sel).length;
+  document.getElementById('scS').textContent=`Each dot is a player with ${S.gp}+ games: minutes per game across, FIBA efficiency per game up.`+(sel?` Magenta: the ${nsel} ${desc(nsel)}.`:'');
   document.getElementById('scKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${esc(flabel())}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
   // hover only the highlighted (coloured) dots when a filter is set; grey dots are context only
   const hov=sel?pts.filter(d=>d.on||d.h):pts;
@@ -292,7 +297,7 @@ function leaders(){
   const v=p=>fg?(p.fga?p.fgm/p.fga:0):pg(p,k),fmt=x=>fg?f1(x*100)+'%':f1(x);
   const ps=P.filter(p=>inScope(p)&&(!fg||(p.gp&&p.fga/p.gp>=3))).sort((a,b)=>v(b)-v(a)).slice(0,10);
   document.getElementById('ldT').textContent=fg?'Field goal %':k==='eff'?'Player efficiency per game':lab+' per game';
-  document.getElementById('ldS').textContent='Top 10 '+scope()+`, ${S.gp}+ games`+(fg?', at least 3 field goal attempts per game.':'.');
+  document.getElementById('ldS').textContent=`Top 10 ${desc(2)}`+(fg?', at least 3 field goal attempts per game.':'.');
   const mx=d3.max(ps,v)||1;
   document.getElementById('leaders').classList.toggle('fgm',fg);
   document.getElementById('leaders').innerHTML=ps.length?ps.map(p=>`<div class="row"><div class="who">${pname(p)}${flags(p)} <small>— ${p.gp} game${p.gp===1?'':'s'} — ${esc(TEAMS[p.t])} (${esc(TC[p.t])})</small></div><div class="val">${fg?`<span class="fp">${fmt(v(p))}</span><small class="fa">(${p.fgm}/${p.fga})</small>`:fmt(v(p))}</div><div class="bar ${S.team<0?'all':''}" style="width:${Math.max(1,v(p)/mx*100)}%"></div></div>`).join('')+(ps.some(p=>p.gone)?'<p class="note">† No longer on the team’s current FIBA roster; games played this season still count.</p>':''):'<div class="empty">No players match these filters.</div>';
@@ -337,7 +342,7 @@ function ages(){
   const sel=filtOn(),tn=esc(flabel());
   document.getElementById('agKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${tn}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
   const yg=tm.filter(p=>p.age<20).length,wh=base.filter(p=>p.h>0).length;
-  document.getElementById('agS').textContent=(sel?`All ${base.length} players (${S.gp}+ games); the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`${base.length} players (${S.gp}+ games). ${yg} ${yg===1?'is':'are'} under 20.`)+` Ages on ${ASOF}; heights where listed (${wh} of ${base.length}).`;
+  document.getElementById('agS').textContent=(sel?`Grey: all ${base.length} players with ${S.gp}+ games. Magenta: the ${tm.length} ${desc(tm.length)}, with their count above; ${yg} of them ${yg===1?'is':'are'} under 20.`:`${base.length} players with ${S.gp}+ games; ${yg} ${yg===1?'is':'are'} under 20.`)+` Ages on ${ASOF}; heights where listed (${wh} of ${base.length}).`;
 }
 // stage filter: before the play-offs start, main stage = reached at least the regular season (play-off
 // qualifiers included); once they start, it becomes 'main stage only' and play-off teams move to Play-offs
@@ -345,7 +350,7 @@ const stgOk=(i,v=S.stg)=>!v||(v===2&&!PO?STG[i]>=2:STG[i]===v);
 const filtOn=()=>S.team>=0||S.stg||S.lc||S.cit||S.pos!=='A'||S.age;
 const STN={1:'qualifier-only teams',2:'main-stage teams',3:'play-off teams'};
 const stn=v=>v===2&&PO?'main-stage-only teams':STN[v];
-const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+stn(S.stg)+')':''):S.stg?stn(S.stg):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
+const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+stn(S.stg)+')':''):S.stg?stn(S.stg):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers',U:'position not specified'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
 function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
@@ -376,13 +381,13 @@ function map(){
     c.onclick=()=>{hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
   const nc=new Set(CITY.map(c=>c[0])).size,nk=new Set(TC).size;
   const top=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c)[0]:null;
-  document.getElementById('mpS').textContent=(on?`Coloured: places with players matching your filters${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+'Dot size shows the number of teams in each place. Click a dot to select a team.';
+  document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+'Dot size shows the number of teams in each place. Click a dot to select a team.';
   document.getElementById('mpKey').innerHTML=`<span><svg width="14" height="14" style="vertical-align:-2px"><circle cx="7" cy="7" r="${base*.9}" fill="var(--ink2)"/></svg> 1 team</span><span><svg width="18" height="18" style="vertical-align:-4px"><circle cx="9" cy="9" r="${base*Math.SQRT2*.9}" fill="var(--ink2)"/></svg> 2 teams</span><span><svg width="20" height="20" style="vertical-align:-5px"><circle cx="10" cy="10" r="${base*Math.sqrt(3)*.9}" fill="var(--ink2)"/></svg> 3 teams</span>`+(on?`<span><i style="background:var(--hi)"></i>Has matching players</span><span><i style="background:var(--lo)"></i>None</span>`:'');
 }
 function cits(){
   const ps=P.filter(inScope),c=d3.rollups(ps.flatMap(p=>p.c),v=>v.length,k=>k).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,12);
   const mx=c[0]?c[0][1]:1;
-  document.getElementById('ctS').textContent=`Top citizenships among ${ps.length} players. A dual national counts for each passport.`;
+  document.getElementById('ctS').textContent=`Top citizenships among the ${ps.length} ${desc(ps.length)}. A dual national counts for each passport.`;
   document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
 }
 // team scoring metrics: total points, then shooting percentages with made/attempted
@@ -403,8 +408,9 @@ function teams(){
   // team-level filters (stage, league country) narrow the lists; ranks stay those of the full table
   const tf=S.stg||S.lc,keep=i=>stgOk(i)&&(!S.lc||TC[i]===S.lc),nk=TM.filter(t=>t.gp&&keep(t.i)).length;
   const scopeT=tf?`${nk} of ${nt} teams (${[S.stg?stn(S.stg):'',S.lc?'in '+(CN[S.lc]||S.lc):''].filter(Boolean).join(' ')}), ranked among all ${nt}`:`all ${nt} teams`;
-  document.querySelector('.nT').textContent=`${TSS[S.ts]}, ${scopeT}`;
-  document.querySelector('.nT2').textContent=`Efficiency per game, ${scopeT}`;
+  const pf=S.pos!=='A'||S.cit||S.age?'. Team totals include all players: position, citizenship, age and minimum-games filters don’t apply here':'';
+  document.querySelector('.nT').textContent=`${TSS[S.ts]}, ${scopeT}${pf}`;
+  document.querySelector('.nT2').textContent=`Efficiency per game, ${scopeT}${pf}`;
   for(const [id,k] of [['teams',S.ts],['teams2','epg']]){
     const pct=id==='teams'&&pc,vv=d=>pct?(d[k][1]?d[k][0]/d[k][1]:0):d[k];
     const t=TM.filter(t=>t.gp).sort((a,b)=>vv(b)-vv(a)),mx=vv(t[0])||1;
