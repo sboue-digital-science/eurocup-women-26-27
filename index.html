@@ -61,6 +61,7 @@ main.band{padding-top:20px}
 .row .who small{color:var(--ink2);font-size:13px}
 .fgm .row{grid-template-columns:minmax(0,1fr) 116px}
 .tpct .trow{grid-template-columns:28px minmax(0,1fr) 140px}.tpct .val{display:flex;justify-content:flex-end;gap:4px}.tpct .fa{width:80px}
+.ph{font-size:14px;font-weight:600;margin:12px 0 0}
 .tgap{color:var(--ink2);padding:0 6px 0 22px;line-height:1.2;letter-spacing:2px}
 @media(max-width:600px){.tpct .trow{grid-template-columns:22px minmax(0,1fr) 128px}.tpct .trow .tb span{white-space:normal}.tpct .fa{width:72px}}
 .fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
@@ -136,10 +137,13 @@ footer{color:var(--ink2);font-size:13px}
   </div>
   <div class="grid grid2">
     <div class="card">
-      <h2>Age profile</h2>
-      <p class="sub" id="agS">Players by age on 26 Nov 2026.</p>
+      <h2>Player profile</h2>
+      <p class="sub" id="agS">Players by age and height.</p>
       <div class="key" id="agKey"></div>
-      <div class="fig" id="age" style="min-height:260px"><svg role="img" aria-label="Column chart of players by age"></svg></div>
+      <div class="ph">Age (years)</div>
+      <div class="fig" id="age" style="min-height:230px"><svg role="img" aria-label="Column chart of players by age"></svg></div>
+      <div class="ph">Height (cm)</div>
+      <div class="fig" id="hgt" style="min-height:230px"><svg role="img" aria-label="Column chart of players by height"></svg></div>
     </div>
     <div class="card">
       <h2>Passports in the squad</h2>
@@ -213,7 +217,7 @@ function init(){
     return{i,n,gp,epg:gp?sm('eff')/gp:0,pts:gp?sm('pts')/gp:0,fg:[fgm,fga],p2:[fgm-tpm,fga-tpa],p3:[tpm,tpa],ft:[sm('ftm'),sm('fta')]}});
   document.getElementById('tsTabs').innerHTML=TSM.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.ts}">${l}</button>`).join('');
   document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams()});
-  for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
+  for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['hgt',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
   update();
 }
 const posOk=p=>S.pos==='A'||p.p===S.pos;
@@ -293,33 +297,44 @@ function leaders(){
   document.getElementById('leaders').classList.toggle('fgm',fg);
   document.getElementById('leaders').innerHTML=ps.length?ps.map(p=>`<div class="row"><div class="who">${pname(p)}${flags(p)} <small>— ${p.gp} game${p.gp===1?'':'s'} — ${esc(TEAMS[p.t])} (${esc(TC[p.t])})</small></div><div class="val">${fg?`<span class="fp">${fmt(v(p))}</span><small class="fa">(${p.fgm}/${p.fga})</small>`:fmt(v(p))}</div><div class="bar ${S.team<0?'all':''}" style="width:${Math.max(1,v(p)/mx*100)}%"></div></div>`).join('')+(ps.some(p=>p.gone)?'<p class="note">† No longer on the team’s current FIBA roster; games played this season still count.</p>':''):'<div class="empty">No players match these filters.</div>';
 }
-function ages(){
-  const box=document.getElementById('age'),svg=box.querySelector('svg');if(!D)return;
+// one column chart: all players (min-games) in grey, players matching the filters in the accent colour
+function hist(id,bins,key,lab,every,unit){
+  const box=document.getElementById(id),svg=box.querySelector('svg');
   const W=box.clientWidth,H=box.clientHeight,m={t:22,r:6,b:30,l:30};
   const sel=filtOn(),tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
-  const bins=d3.range(15,Math.max(39,Math.floor(d3.max(D,p=>p.age)||0)+1)).map(a=>({a,n:base.filter(p=>Math.floor(p.age)===a).length,k:tm.filter(p=>Math.floor(p.age)===a).length}));
-  const x=d3.scaleBand().domain(bins.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
-  const y=d3.scaleLinear().domain([0,d3.max(bins,b=>b.n)||1]).nice().range([H-m.b,m.t]);
+  const B=bins.map(a=>({a,n:base.filter(p=>key(p)===a).length,k:tm.filter(p=>key(p)===a).length}));
+  const x=d3.scaleBand().domain(B.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
+  const y=d3.scaleLinear().domain([0,d3.max(B,b=>b.n)||1]).nice().range([H-m.b,m.t]);
   const bw=Math.min(24,x.bandwidth()),off=(x.bandwidth()-bw)/2,rad=Math.min(4,bw/2);
   const col=(x0,top,bot,c,round)=>{const h=bot-top;if(h<=0)return'';const r=round?Math.min(rad,h):0;return`<path d="M${x0},${bot}V${top+r}Q${x0},${top} ${x0+r},${top}H${x0+bw-r}Q${x0+bw},${top} ${x0+bw},${top+r}V${bot}Z" fill="${c}"/>`};
   let s=y.ticks(4).filter(Number.isInteger).map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${m.l-6}" y="${y(t)}" dy=".32em" text-anchor="end" font-size="12" fill="var(--ink2)">${t}</text>`).join('');
-  s+=bins.map(b=>{if(!b.n)return'';const x0=x(b.a)+off,top=y(b.n),base=y(0);let o='';
+  s+=B.map((b,j)=>{if(!b.n)return'';const x0=x(b.a)+off,top=y(b.n),base=y(0);let o='';
     if(!sel)o=col(x0,top,base,'var(--all)',1);
     else{const tk=y(b.k);
       if(b.k<b.n)o+=col(x0,top,b.k?tk-2:base,'var(--lo)',1);
       if(b.k){o+=col(x0,tk,base,'var(--hi)',b.k===b.n);
         o+=`<text x="${x0+bw/2}" y="${top-6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${b.k}</text>`}}
-    return o+`<rect class="ab" data-a="${b.a}" data-n="${b.n}" data-k="${b.k}" x="${x(b.a)}" y="${m.t}" width="${x.bandwidth()}" height="${y(0)-m.t}" fill="transparent"/>`}).join('');
+    return o+`<rect class="ab" data-j="${j}" x="${x(b.a)}" y="${m.t}" width="${x.bandwidth()}" height="${y(0)-m.t}" fill="transparent"/>`}).join('');
   s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
-  const every=W<520?5:2;
-  s+=bins.filter(b=>b.a%every===0).map(b=>`<text x="${x(b.a)+x.bandwidth()/2}" y="${H-m.b+16}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`).join('');
+  const ev=every(W);
+  s+=B.filter((b,j)=>j%ev===0).map(b=>`<text x="${x(b.a)+x.bandwidth()/2}" y="${H-m.b+16}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`).join('');
   svg.innerHTML=s;
   const tn=esc(flabel());
-  svg.querySelectorAll('.ab').forEach(r=>{const n=+r.dataset.n,k=+r.dataset.k,a=r.dataset.a;
-    r.onpointermove=e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} aged ${a}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>aged ${a}`);r.onpointerleave=hideTip});
+  svg.querySelectorAll('.ab').forEach(r=>{const b=B[+r.dataset.j],n=b.n,k=b.k;
+    r.onpointermove=e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} ${lab(b.a)}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>${lab(b.a)}`);r.onpointerleave=hideTip});
+  return{tm,base};
+}
+function ages(){
+  if(!D)return;
+  const amax=Math.floor(d3.max(D,p=>p.age)||0),hs=D.map(p=>p.h).filter(h=>h>0);
+  const {tm,base}=hist('age',d3.range(15,Math.max(39,amax+1)),p=>p.age==null?null:Math.floor(p.age),a=>`aged ${a}`,W=>W<520?5:2);
+  // height in 5 cm bands (155–159, 160–164, …), players without a listed height left out
+  const h0=Math.floor(d3.min(hs)/5)*5,h1=Math.floor(d3.max(hs)/5)*5;
+  hist('hgt',d3.range(h0,h1+1,5),p=>p.h>0?Math.floor(p.h/5)*5:null,a=>`${a}–${a+4} cm`,W=>W<420?2:1);
+  const sel=filtOn(),tn=esc(flabel());
   document.getElementById('agKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${tn}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
-  const yg=tm.filter(p=>p.age<20).length;
-  document.getElementById('agS').textContent=sel?`All ${base.length} players (${S.gp}+ games) by age on ${ASOF}; the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`Players by age on ${ASOF}. ${yg} of ${tm.length} ${yg===1?'is':'are'} under 20.`;
+  const yg=tm.filter(p=>p.age<20).length,wh=base.filter(p=>p.h>0).length;
+  document.getElementById('agS').textContent=(sel?`All ${base.length} players (${S.gp}+ games); the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`${base.length} players (${S.gp}+ games). ${yg} ${yg===1?'is':'are'} under 20.`)+` Ages on ${ASOF}; heights where listed (${wh} of ${base.length}).`;
 }
 // stage filter: before the play-offs start, main stage = reached at least the regular season (play-off
 // qualifiers included); once they start, it becomes 'main stage only' and play-off teams move to Play-offs
