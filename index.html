@@ -31,18 +31,13 @@ header p{margin:0;color:var(--bandink2);max-width:68ch}
 .kicker{color:var(--bandink2);font-size:14px}
 .fbar{position:sticky;top:0;z-index:5;background:var(--band);padding:10px max(5vw,16px) 14px;box-shadow:0 1px 0 rgba(255,255,255,.08)}
 .filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:end}
-.filters select{width:170px}.filters #fGp{width:112px}.filters input{width:160px}.seg button{padding:0 11px}
-@media(min-width:701px){.filters>*{flex:1 1 170px}.filters>div{flex-basis:300px}.filters select,.filters #fGp{width:100%}.seg button{flex:1}}
-@media(min-width:1000px){.filters>label{flex:1 1 170px}.filters>div{flex:1 1 340px}}
-@media(max-width:700px){.filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}.filters select,.filters #fGp{width:100%}.filters>div{grid-column:1/-1;order:9}.seg button{flex:1;padding:0 6px}}
+.filters select{width:100%}
+@media(min-width:701px){.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}}
+@media(max-width:700px){.filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}}
 .filters label{display:grid;gap:4px;font-size:13px;color:var(--bandink2)}
 select,input{font:inherit;font-size:16px;height:44px;border-radius:8px;border:1px solid #3a3b40;background:#1f2025;color:var(--bandink);padding:0 12px}
 input{width:min(240px,80vw)}
 .clr{font:inherit;font-size:15px;height:44px;padding:0 16px;border-radius:8px;border:1px solid #3a3b40;background:transparent;color:var(--bandink);cursor:pointer;white-space:nowrap}.clr:disabled{opacity:.4;cursor:default}.filters>.clr{flex:none!important}
-.seg{display:flex;border:1px solid #3a3b40;border-radius:8px;overflow:hidden;height:44px}
-.seg button{font:inherit;font-size:15px;background:#1f2025;color:var(--bandink2);border:0;padding:0 14px;min-width:44px;cursor:pointer}
-.seg button+button{border-left:1px solid #3a3b40}
-.seg button[aria-pressed=true]{background:var(--hi);color:#fff}
 button:focus-visible,select:focus-visible,input:focus-visible,.trow:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
 main.band{padding-top:20px}
 .figband{padding:clamp(20px,3vw,32px) max(5vw,16px) 0}
@@ -106,9 +101,9 @@ footer{color:var(--ink2);font-size:13px}
     <label>Competition stage<select id="fStg"><option value="">All stages</option><option value="1">Qualifiers only</option><option value="2">Main stage</option><option value="3">Play-offs</option></select></label>
     <label>League country<select id="fLc"><option value="">All countries</option></select></label>
     <label>Team<select id="fTeam"><option value="-1">All 53 teams</option></select></label>
+    <label>Position<select id="fPos"><option value="A">All positions</option><option value="G">Guards</option><option value="F">Forwards</option><option value="C">Centers</option></select></label>
     <label>Citizenship<select id="fCit"><option value="">All citizenships</option></select></label>
-    <div><div style="font-size:13px;color:var(--bandink2);margin-bottom:4px">Position</div>
-      <div class="seg" id="fPos"><button data-v="A" aria-pressed="true">All</button><button data-v="G" aria-pressed="false">Guards</button><button data-v="F" aria-pressed="false">Forwards</button><button data-v="C" aria-pressed="false">Centers</button></div></div>
+    <label>Age range<select id="fAge"><option value="0">All ages</option><option value="16">16–20</option><option value="21">21–25</option><option value="26">26–30</option><option value="31">31–35</option><option value="36">36–40</option></select></label>
 
     <button id="fClr" class="clr" type="button">Clear filters</button>
 </div></div>
@@ -170,7 +165,7 @@ footer{color:var(--ink2);font-size:13px}
 {
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f1=d3.format('.1f'),pct=d3.format('.0%');
-const S={stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
+const S={age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
 const M=[['eff','Efficiency'],['pts','Points'],['ast','Assists'],['reb','Rebounds'],['stl','Steals'],['blk','Blocks'],['fg','FG%'],['min','Minutes']];
 const tip=document.getElementById('tip');
 let STG=[],PO=false,D,TEAMS,TC,CN,P=[],TM=[];
@@ -198,8 +193,9 @@ function init(){
   const sg=document.getElementById('fStg');sg.onchange=()=>{S.stg=+sg.value;if(S.team>=0&&!stgOk(S.team))S.team=-1;fillTeams();update()};
   ct.onchange=()=>{S.cit=ct.value;update()};
   sel.onchange=()=>{S.team=+sel.value;update()};
-  document.querySelectorAll('#fPos button').forEach(b=>b.onclick=()=>{S.pos=b.dataset.v;document.querySelectorAll('#fPos button').forEach(x=>x.setAttribute('aria-pressed',x===b));update()});
-  document.getElementById('fClr').onclick=()=>{Object.assign(S,{stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2});lc.value='';document.getElementById('fStg').value='';ct.value='';document.getElementById('fGp').value='2';document.querySelectorAll('#fPos button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='A'));fillTeams();update()};
+  document.getElementById('fPos').onchange=e=>{S.pos=e.target.value;update()};
+  document.getElementById('fAge').onchange=e=>{S.age=+e.target.value;update()};
+  document.getElementById('fClr').onclick=()=>{Object.assign(S,{age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2});lc.value='';document.getElementById('fStg').value='';ct.value='';document.getElementById('fGp').value='2';document.getElementById('fPos').value='A';document.getElementById('fAge').value='0';fillTeams();update()};
   document.getElementById('fGp').onchange=e=>{S.gp=+e.target.value;update()};
   document.getElementById('ldTabs').innerHTML=M.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.metric}">${l}</button>`).join('');
   document.querySelectorAll('#ldTabs button').forEach(b=>b.onclick=()=>{S.metric=b.dataset.k;document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));leaders()});
@@ -210,18 +206,19 @@ function init(){
   update();
 }
 const posOk=p=>S.pos==='A'||p.p===S.pos;
+const ageOk=p=>!S.age||(p.age!=null&&Math.floor(p.age)>=S.age&&Math.floor(p.age)<=S.age+4);
 function fillTeams(){
   const sel=document.getElementById('fTeam'),ids=TEAMS.map((t,i)=>i).filter(i=>(!S.lc||TC[i]===S.lc)&&stgOk(i));
   sel.innerHTML=`<option value="-1">All ${ids.length} ${S.stg?esc(STN[S.stg]):'teams'}${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
   sel.value=S.team;
 }
-const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+STN[S.stg]+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'');
+const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+STN[S.stg]+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'')+(S.age?`, aged ${S.age}–${S.age+4}`:'');
 function update(){
-  P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
+  P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&ageOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
   figs();scatter();leaders();ages();cits();map();teams();counts();
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
 }
-const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
+const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
 function counts(){
   const cname=k=>CN[k]||k;
   const tt=[...new Set(D.filter(p=>mt(p,['stg','team'])).map(p=>p.t))],SL={1:'Qualifiers only',2:'Main stage',3:'Play-offs'};
@@ -286,7 +283,7 @@ function leaders(){
 function ages(){
   const box=document.getElementById('age'),svg=box.querySelector('svg');if(!D)return;
   const W=box.clientWidth,H=box.clientHeight,m={t:22,r:6,b:30,l:30};
-  const sel=S.team>=0||S.lc||S.cit||S.pos!=='A',tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
+  const sel=filtOn(),tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
   const bins=d3.range(15,39).map(a=>({a,n:base.filter(p=>Math.floor(p.age)===a).length,k:tm.filter(p=>Math.floor(p.age)===a).length}));
   const x=d3.scaleBand().domain(bins.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
   const y=d3.scaleLinear().domain([0,d3.max(bins,b=>b.n)||1]).nice().range([H-m.b,m.t]);
@@ -304,9 +301,7 @@ function ages(){
   const every=W<520?5:2;
   s+=bins.filter(b=>b.a%every===0).map(b=>`<text x="${x(b.a)+x.bandwidth()/2}" y="${H-m.b+16}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`).join('');
   svg.innerHTML=s;
-  const PN={G:'guards',F:'forwards',C:'centers'};
-  const lbl=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?PN[S.pos]:''].filter(Boolean).join(' · ');
-  const L=lbl.charAt(0).toUpperCase()+lbl.slice(1),tn=esc(L);
+  const tn=esc(flabel());
   svg.querySelectorAll('.ab').forEach(r=>{const n=+r.dataset.n,k=+r.dataset.k,a=r.dataset.a;
     r.onpointermove=e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} aged ${a}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>aged ${a}`);r.onpointerleave=hideTip});
   document.getElementById('agKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${tn}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
@@ -315,9 +310,9 @@ function ages(){
 }
 // stage filter: main stage = reached at least the regular season (play-off teams included)
 const stgOk=(i,v=S.stg)=>!v||(v===2?STG[i]>=2:STG[i]===v);
-const filtOn=()=>S.team>=0||S.stg||S.lc||S.cit||S.pos!=='A';
+const filtOn=()=>S.team>=0||S.stg||S.lc||S.cit||S.pos!=='A'||S.age;
 const STN={1:'qualifier-only teams',2:'main-stage teams',3:'play-off teams'};
-const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+STN[S.stg]+')':''):S.stg?STN[S.stg]:'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
+const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+STN[S.stg]+')':''):S.stg?STN[S.stg]:'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
 function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
