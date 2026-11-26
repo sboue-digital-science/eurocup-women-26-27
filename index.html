@@ -78,7 +78,7 @@ th{font-weight:600;color:var(--ink2);cursor:pointer;user-select:none;position:st
 th[aria-sort]{color:var(--ink)}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .more{margin-top:12px;font:inherit;height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
-.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:8px;font-size:13px;line-height:1.35;opacity:0;transition:opacity .12s;z-index:9;max-width:240px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:8px;font-size:13px;line-height:1.35;opacity:0;transition:opacity .12s;z-index:9;max-width:340px}
 .tip b{font-size:15px}
 .key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-bottom:8px}
 .key i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
@@ -266,7 +266,7 @@ function scatter(){
   const del=d3.Delaunay.from(pts,d=>d.x,d=>d.y),r=svg.querySelector('#scHit');
   r.onpointermove=e=>{const b=svg.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top,i=del.find(mx,my),d=pts[i];
     if(!d||Math.hypot(d.x-mx,d.y-my)>30)return hideTip();const p=d.p;
-    showTip(e,`<b>${f1(pg(p,'eff'))}</b> eff · <b>${f1(pg(p,'min'))}</b> min<br>${pname(p)}<br>${esc(TEAMS[p.t])} · ${f1(pg(p,'pts'))} pts, ${f1(pg(p,'reb'))} reb, ${f1(pg(p,'ast'))} ast${p.gone?'<br>† No longer on the team’s current roster':''}`)};
+    showTip(e,`<b>${f1(pg(p,'eff'))}</b> eff · <b>${f1(pg(p,'min'))}</b> min<br>${pname(p)}${flags(p)}${p.age!=null?` — ${Math.floor(p.age)} years`:''}<br>${esc(TEAMS[p.t])} · ${f1(pg(p,'pts'))} pts, ${f1(pg(p,'reb'))} reb, ${f1(pg(p,'ast'))} ast, ${f1(pg(p,'blk'))} blk, ${p.fga?f1(p.fgm/p.fga*100)+'%':'–'} FG${p.gone?'<br>† No longer on the team’s current roster':''}`)};
   r.onpointerleave=hideTip;
 }
 const flags=p=>p.c.map(c=>{const n=esc(CN[c]||c);return FL[c]?`<img class="flag" src="${FL[c]}" alt="${n}" title="${n}">`:`<span class="flagx" title="${n}">${esc(c)}</span>`}).join('');
