@@ -169,27 +169,30 @@ async function main() {
     missing++;
     return {};
   });
-  if (missing) console.log(`  ${missing} player page(s) had no profile data; roster values used for those.`);
+  if (missing) console.log(`  ${missing} player page(s) had no profile data; previous or roster values used for those.`);
 
+  // previous values per player, used when FIBA's player page fails
+  const prev = new Map((old.players || []).map(p => [old.teams[p.t] + '|' + p.n, p]));
   const players = [];
   jobs.forEach(({ t, id }, k) => {
     const r = t.roster.get(id), st = t.stats.get(id), l = t.listed.get(id) || {}, pp = pages[k];
     const gp = st?.totalGamesPlayed || 0;
     if (!r && !gp) return;
-    const pos = r?.position || POS_CODE[l.positionCode] || '';
-    const dob = pp.birthDate || r?.dateOfBirth || l.dateOfBirth || '';
-    const cit = pp.nationalities?.length ? pp.nationalities : [r?.nationality || l.nationality].filter(Boolean);
+    const name = `${r?.firstName ?? st?.firstName ?? ''} ${r?.lastName ?? st?.lastName ?? ''}`.trim(), op = prev.get(t.name + '|' + name);
+    const pos = r?.position || POS_CODE[l.positionCode] || op?.pos || '';
+    const dob = pp.birthDate || r?.dateOfBirth || l.dateOfBirth || op?.dob || '';
+    const cit = pp.nationalities?.length ? pp.nationalities : op?.c?.length ? op.c : [r?.nationality || l.nationality].filter(Boolean);
     const n = k2 => st?.[k2] || 0;
     players.push({
       t: teams.indexOf(t),
-      n: `${r?.firstName ?? st?.firstName ?? ''} ${r?.lastName ?? st?.lastName ?? ''}`.trim(),
+      n: name,
       gone: !r,
       no: Number(r?.uniformNumber ?? st?.uniformNumber) || null,
       p: POS_GROUP[pos] || 'U',
       pos,
       dob,
       age: dob ? r1((asofDate - new Date(dob + 'T12:00:00Z')) / (365.25 * 864e5)) : null,
-      h: pp.heightCm > 0 ? pp.heightCm : (r?.heightInCm || null),
+      h: pp.heightCm > 0 ? pp.heightCm : (r?.heightInCm || op?.h || null),
       c: cit,
       gp,
       min: r1(n('totalPlayTimeInSeconds') / 60),
