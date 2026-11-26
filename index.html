@@ -165,7 +165,7 @@ footer{color:var(--ink2);font-size:13px}
       <div id="leaders"></div>
     </div>
   </div>
-  <footer>Source: FIBA, fiba.basketball, EuroCup Women 2026-27 team and player pages, data as of <span id="asof2">26 Nov 2026</span>. Efficiency is FIBA's: points + rebounds + assists + steals + blocks − missed shots − turnovers. Players on a roster who have not played yet appear only with the 0+ games filter, with all stats at zero. A player listed with † has left the team's current roster. Team home cities are not in the FIBA data; they were added from public information on each club. Basemap: Natural Earth via world-atlas. Flags: flag-icons.</footer>
+  <footer>Source: FIBA, fiba.basketball, EuroCup Women 2026-27 team and player pages, data as of <span id="asof2">26 Nov 2026</span>. Efficiency is FIBA's: points + rebounds + assists + steals + blocks − missed shots − turnovers. Players on a roster who have not played yet appear only with the 0+ games filter, with all stats at zero. A player listed with † has left the team's current roster. Team home cities are not in the FIBA data; they were added from public information on each club. Basemap: Natural Earth via world-atlas. Flags: flag-icons. The former Serbia and Montenegro code (SCG), still used by FIBA for some players, is counted as Serbia.</footer>
 </div></main>
 <div class="tip" id="tip"></div>
 
@@ -184,7 +184,10 @@ const hideTip=()=>tip.style.opacity=0;
 const pname=p=>esc(p.n)+(p.gone?' †':'');
 
 let GEO,CITY,FL={},ASOF='';
-Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r.json()),fetch('flags.json').then(r=>r.json()).catch(()=>({}))]).then(([d,g,f])=>{FL=f;D=d.players;TEAMS=d.teams;STG=d.stage||d.teams.map(()=>2);PO=!!d.po;ASOF=d3.timeFormat('%-d %b %Y')(new Date(d.asof+'T12:00:00'));TC=d.tc;CN=d.cn;CITY=d.city;GEO=g;init()});
+Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r.json()),fetch('flags.json').then(r=>r.json()).catch(()=>({}))]).then(([d,g,f])=>{FL=f;D=d.players;
+  // FIBA still lists some players with the former Serbia and Montenegro code (SCG): count it as Serbia
+  D.forEach(p=>{p.c=[...new Set(p.c.map(c=>c==='SCG'?'SRB':c))]});
+  TEAMS=d.teams;STG=d.stage||d.teams.map(()=>2);PO=!!d.po;ASOF=d3.timeFormat('%-d %b %Y')(new Date(d.asof+'T12:00:00'));TC=d.tc;CN=d.cn;CITY=d.city;GEO=g;init()});
 
 function init(){
   const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
