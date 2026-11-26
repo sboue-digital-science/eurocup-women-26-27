@@ -143,7 +143,7 @@ footer{color:var(--ink2);font-size:13px}
       <div class="ph">Age (years)</div>
       <div class="fig" id="age" style="min-height:230px"><svg role="img" aria-label="Column chart of players by age"></svg></div>
       <div class="ph">Height (cm)</div>
-      <div class="fig" id="hgt" style="min-height:230px"><svg role="img" aria-label="Column chart of players by height"></svg></div>
+      <div class="fig" id="hgt" style="min-height:260px"><svg role="img" aria-label="Column chart of players by height"></svg></div>
     </div>
     <div class="card">
       <h2>Passports in the squad</h2>
@@ -298,9 +298,9 @@ function leaders(){
   document.getElementById('leaders').innerHTML=ps.length?ps.map(p=>`<div class="row"><div class="who">${pname(p)}${flags(p)} <small>— ${p.gp} game${p.gp===1?'':'s'} — ${esc(TEAMS[p.t])} (${esc(TC[p.t])})</small></div><div class="val">${fg?`<span class="fp">${fmt(v(p))}</span><small class="fa">(${p.fgm}/${p.fga})</small>`:fmt(v(p))}</div><div class="bar ${S.team<0?'all':''}" style="width:${Math.max(1,v(p)/mx*100)}%"></div></div>`).join('')+(ps.some(p=>p.gone)?'<p class="note">† No longer on the team’s current FIBA roster; games played this season still count.</p>':''):'<div class="empty">No players match these filters.</div>';
 }
 // one column chart: all players (min-games) in grey, players matching the filters in the accent colour
-function hist(id,bins,key,lab,every,unit){
+function hist(id,bins,key,lab,every,range){
   const box=document.getElementById(id),svg=box.querySelector('svg');
-  const W=box.clientWidth,H=box.clientHeight,m={t:22,r:6,b:30,l:30};
+  const W=box.clientWidth,H=box.clientHeight,m={t:30,r:6,b:range?60:30,l:30};
   const sel=filtOn(),tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
   const B=bins.map(a=>({a,n:base.filter(p=>key(p)===a).length,k:tm.filter(p=>key(p)===a).length}));
   const x=d3.scaleBand().domain(B.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
@@ -317,7 +317,10 @@ function hist(id,bins,key,lab,every,unit){
     return o+`<rect class="ab" data-j="${j}" x="${x(b.a)}" y="${m.t}" width="${x.bandwidth()}" height="${y(0)-m.t}" fill="transparent"/>`}).join('');
   s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
   const ev=every(W);
-  s+=B.filter((b,j)=>j%ev===0).map(b=>`<text x="${x(b.a)+x.bandwidth()/2}" y="${H-m.b+16}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`).join('');
+  // x labels: single value, or a range written on three lines (min, –, max)
+  s+=B.filter((b,j)=>j%ev===0).map(b=>{const cx=x(b.a)+x.bandwidth()/2,y0=H-m.b+16;
+    return range?`<text x="${cx}" y="${y0}" text-anchor="middle" font-size="12" fill="var(--ink2)"><tspan x="${cx}">${b.a}</tspan><tspan x="${cx}" dy="13">–</tspan><tspan x="${cx}" dy="13">${b.a+range-1}</tspan></text>`:`<text x="${cx}" y="${y0}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`}).join('');
+  s+=`<text x="0" y="10" font-size="12" fill="var(--ink2)">Number of players</text>`;
   svg.innerHTML=s;
   const tn=esc(flabel());
   svg.querySelectorAll('.ab').forEach(r=>{const b=B[+r.dataset.j],n=b.n,k=b.k;
@@ -330,7 +333,7 @@ function ages(){
   const {tm,base}=hist('age',d3.range(15,Math.max(39,amax+1)),p=>p.age==null?null:Math.floor(p.age),a=>`aged ${a}`,W=>W<520?5:2);
   // height in 5 cm bands (155–159, 160–164, …), players without a listed height left out
   const h0=Math.floor(d3.min(hs)/5)*5,h1=Math.floor(d3.max(hs)/5)*5;
-  hist('hgt',d3.range(h0,h1+1,5),p=>p.h>0?Math.floor(p.h/5)*5:null,a=>`${a}–${a+4} cm`,W=>W<420?2:1);
+  hist('hgt',d3.range(h0,h1+1,5),p=>p.h>0?Math.floor(p.h/5)*5:null,a=>`${a}–${a+4} cm`,W=>W<420?2:1,5);
   const sel=filtOn(),tn=esc(flabel());
   document.getElementById('agKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${tn}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
   const yg=tm.filter(p=>p.age<20).length,wh=base.filter(p=>p.h>0).length;
