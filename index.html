@@ -365,6 +365,8 @@ const STN={1:'qualifier-only teams',2:'main-stage teams',3:'play-off teams'};
 const stn=v=>v===2&&PO?'main-stage-only teams':STN[v];
 const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+stn(S.stg)+')':''):S.stg?stn(S.stg):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers',U:'position not specified'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
 function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
+// map zoom state (scale + translate on top of the whole-Europe view), kept between renders for the animation
+let MZ={s:1,tx:0,ty:0},MZsize='',MZraf=0;
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
   const W=box.clientWidth,H=box.clientHeight,pad=W<520?18:34;
@@ -379,22 +381,44 @@ function map(){
   const base=W<520?4:5;
   cl.forEach(c=>{c.n=c.m.length;c.r=base*Math.sqrt(c.n);c.c=d3.sum(c.m,i=>cnt.get(i)||0);c.sel=c.m.includes(S.team)});
   cl.sort((a,b)=>b.r-a.r);
+  // zoom in when a filter leaves 1–10 coloured places; never closer than about 5° × 3° so the region stays recognisable
+  const hl=on?cl.filter(d=>d.c):[];let Z={s:1,tx:0,ty:0};
+  if(hl.length&&hl.length<=10){
+    const lon=hl.flatMap(d=>d.m.map(i=>CITY[i][2])),lat=hl.flatMap(d=>d.m.map(i=>CITY[i][1]));
+    let x0=d3.min(lon),x1=d3.max(lon),y0=d3.min(lat),y1=d3.max(lat);const cx=(x0+x1)/2,cy=(y0+y1)/2;
+    if(x1-x0<5){x0=cx-2.5;x1=cx+2.5}if(y1-y0<3){y0=cy-1.5;y1=cy+1.5}
+    const zp=d3.geoConicConformal().parallels([38,58]).rotate([-15,0]).fitExtent([[pad*2,pad*2],[W-pad*2,H-pad*2]],{type:'MultiPoint',coordinates:[[x0,y0],[x1,y1],[x0,y1],[x1,y0]]});
+    const k=zp.scale()/pr.scale();
+    if(k>1)Z={s:k,tx:zp.translate()[0]-k*pr.translate()[0],ty:zp.translate()[1]-k*pr.translate()[1]};
+  }
   let s=`<defs><clipPath id="mclip"><rect width="${W}" height="${H}" rx="8"/></clipPath></defs><g clip-path="url(#mclip)"><rect width="${W}" height="${H}" fill="var(--sea)"/>`;
-  s+=GEO.features.map(f=>path(f)).filter(Boolean).map(d=>`<path d="${d}" fill="var(--land)" stroke="var(--bg)" stroke-width=".8"/>`).join('')+'</g>';
-  s+=cl.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${on?(d.c?'var(--hi)':'var(--lo)'):'var(--all)'}" stroke="${d.sel?'var(--ink)':'var(--bg)'}" stroke-width="${d.sel?2.5:1.5}"/>`).join('');
+  s+='<g id="mz">'+GEO.features.map(f=>path(f)).filter(Boolean).map(d=>`<path d="${d}" fill="var(--land)" stroke="var(--bg)" stroke-width=".8" vector-effect="non-scaling-stroke"/>`).join('')+'</g>';
+  s+=cl.map((d,k)=>`<circle class="md" data-k="${k}" cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${on?(d.c?'var(--hi)':'var(--lo)'):'var(--all)'}" stroke="${d.sel?'var(--ink)':'var(--bg)'}" stroke-width="${d.sel?2.5:1.5}"/>`).join('');
   const city=d=>d.name;
   const lab=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c).slice(0,W<520?2:4):[];
   const sl=cl.find(d=>d.sel);if(sl&&!lab.includes(sl))lab.push(sl);
-  s+=lab.map(d=>`<text x="${d.x+d.r+5}" y="${d.y}" dy=".32em" font-size="13" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${esc(city(d))}</text>`).join('');
+  s+=lab.map(d=>`<text class="ml" data-k="${cl.indexOf(d)}" x="${d.x+d.r+5}" y="${d.y}" dy=".32em" font-size="13" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${esc(city(d))}</text>`).join('');
   s+=cl.map((d,k)=>`<circle class="mh" data-k="${k}" cx="${d.x}" cy="${d.y}" r="${Math.max(12,d.r+4)}" fill="transparent" style="cursor:pointer"/>`).join('');
+  s+='</g>';
   svg.innerHTML=s;
+  // place everything for a zoom state z, then animate from the current state to the target
+  const mz=svg.querySelector('#mz'),dots=[...svg.querySelectorAll('.md,.mh')],labs=[...svg.querySelectorAll('.ml')];
+  const apply=z=>{mz.setAttribute('transform',`translate(${z.tx},${z.ty}) scale(${z.s})`);
+    for(const c of dots){const d=cl[+c.dataset.k];c.setAttribute('cx',z.s*d.x+z.tx);c.setAttribute('cy',z.s*d.y+z.ty)}
+    for(const t of labs){const d=cl[+t.dataset.k];t.setAttribute('x',z.s*d.x+z.tx+d.r+5);t.setAttribute('y',z.s*d.y+z.ty)}};
+  cancelAnimationFrame(MZraf);
+  const key=W+'x'+H,from=MZsize===key?MZ:Z;MZsize=key;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||(from.s===Z.s&&from.tx===Z.tx&&from.ty===Z.ty)){MZ=Z;apply(Z)}
+  else{const ip=d3.interpolate(from,Z),t0=performance.now(),dur=750;apply(from);
+    const step=now=>{const t=Math.min(1,(now-t0)/dur);MZ=ip(d3.easeCubicInOut(t));apply(MZ);if(t<1)MZraf=requestAnimationFrame(step);else MZ=Z};
+    MZraf=requestAnimationFrame(step)}
   svg.querySelectorAll('.mh').forEach(c=>{const d=cl[+c.dataset.k];
     c.onpointermove=e=>showTip(e,`<b>${d.n}</b> team${d.n>1?'s':''} · ${esc(city(d))}, ${esc(CN[TC[d.m[0]]]||TC[d.m[0]])}<br>`+d.m.map(i=>esc(TEAMS[i])+(d.n>1&&CITY[i][0]!==d.name?` (${esc(CITY[i][0])})`:'')+(on?` — ${cnt.get(i)||0} matching`:'')).join('<br>')+(d.n>1?'<br><i>Click again for the next team</i>':''));
     c.onpointerleave=hideTip;
     c.onclick=()=>{hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
   const nc=new Set(CITY.map(c=>c[0])).size,nk=new Set(TC).size;
   const top=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c)[0]:null;
-  document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+'Dot size shows the number of teams in each place. Click a dot to select a team.';
+  document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+(Z.s>1?'Zoomed to the coloured places. ':'')+'Dot size shows the number of teams in each place. Click a dot to select a team.';
   document.getElementById('mpKey').innerHTML=`<span><svg width="14" height="14" style="vertical-align:-2px"><circle cx="7" cy="7" r="${base*.9}" fill="var(--ink2)"/></svg> 1 team</span><span><svg width="18" height="18" style="vertical-align:-4px"><circle cx="9" cy="9" r="${base*Math.SQRT2*.9}" fill="var(--ink2)"/></svg> 2 teams</span><span><svg width="20" height="20" style="vertical-align:-5px"><circle cx="10" cy="10" r="${base*Math.sqrt(3)*.9}" fill="var(--ink2)"/></svg> 3 teams</span>`+(on?`<span><i style="background:var(--hi)"></i>Has matching players</span><span><i style="background:var(--lo)"></i>None</span>`:'');
 }
 function cits(){
