@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Explore FIBA EuroCup Women 2026-27 statistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 /* VOICE: a newspaper sports-desk graphic — exact, calm, the numbers lead.
    IDEA: a box score sheet pinned under an arena scoreboard.
    PICTURE: one large scatter of every player (minutes vs efficiency), the chosen team lit in the accent colour.
-   COLOUR and TYPE: scoreboard black band, white sheet, #951B81 as the only accent; Barlow Condensed headings, Barlow text.
+   COLOUR and TYPE: scoreboard black band, white sheet, #951B81 as the only accent; Open Sans (brand font): headings 700, text 400.
    LAYOUT: band with title + filters, figure strip, scatter beside leaders, then age, passports, teams, full table. */
 :root{color-scheme:light dark;
  --bg:light-dark(#ffffff,#121316);--plane:light-dark(#f6f5f2,#0b0b0c);
@@ -21,8 +21,8 @@
  --band:#141519;--bandink:#f3f1ec;--bandink2:#a9a7a2;--line:light-dark(rgba(11,11,11,.1),rgba(255,255,255,.1))}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--plane);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
-h1,h2,.num{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700}
+body{margin:0;background:var(--plane);color:var(--ink);font:16px/1.55 "Open Sans",system-ui,sans-serif;overflow-x:clip}
+h1,h2,.num{font-family:"Open Sans",system-ui,sans-serif;font-weight:700}
 .band{padding:clamp(24px,4vw,52px) max(5vw,16px)}
 .wrap{max-width:1240px;margin:0 auto}
 header{background:var(--band);color:var(--bandink)}header.band{padding-bottom:12px}
@@ -33,7 +33,7 @@ header p{margin:0;color:var(--bandink2);max-width:68ch}
 .filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:end}
 .filters select{width:170px}.filters #fGp{width:112px}.filters input{width:160px}.seg button{padding:0 11px}
 @media(min-width:701px){.filters>*{flex:1 1 170px}.filters>div{flex-basis:300px}.filters select,.filters #fGp{width:100%}.seg button{flex:1}}
-@media(min-width:1000px){.filters{flex-wrap:nowrap}.filters>*{flex:1 1 0}.filters>div{flex:1.7 1 0;min-width:300px}}
+@media(min-width:1000px){.filters{flex-wrap:nowrap}.filters>*{flex:1 1 0}.filters>div{flex:1.7 1 0;min-width:340px}}
 @media(max-width:700px){.filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.filters>*{flex:none}}
 .filters label{display:grid;gap:4px;font-size:13px;color:var(--bandink2)}
 select,input{font:inherit;font-size:16px;height:44px;border-radius:8px;border:1px solid #3a3b40;background:#1f2025;color:var(--bandink);padding:0 12px}
