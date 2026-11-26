@@ -67,6 +67,8 @@ main.band{padding-top:20px}
 .tpct .trow{grid-template-columns:28px minmax(0,1fr) 140px}.tpct .val{display:flex;justify-content:flex-end;gap:4px}.tpct .fa{width:80px}
 .ph{font-size:14px;font-weight:600;margin:12px 0 0}
 .def{margin:0;font-size:13px;line-height:1.4;color:var(--ink2)}#t2pad{padding-bottom:12px}
+.mapbtn{position:absolute;top:10px;right:10px;z-index:2;font:inherit;font-size:14px;font-weight:600;height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.mapbtn:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
 .tgap{color:var(--ink2);padding:0 6px 0 22px;line-height:1.2;letter-spacing:2px}
 @media(max-width:600px){.tpct .trow{grid-template-columns:22px minmax(0,1fr) 128px}.tpct .trow .tb span{white-space:normal}.tpct .fa{width:72px}}
 .fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
@@ -139,7 +141,7 @@ footer{color:var(--ink2);font-size:13px}
     <h2>Where the teams play</h2>
     <p class="sub" id="mpS"></p>
     <div class="key" id="mpKey"></div>
-    <div class="fig" id="map"><svg role="img" aria-label="Map of team home cities"></svg></div>
+    <div class="fig" id="map"><svg role="img" aria-label="Map of team home cities"></svg><button id="mapBtn" class="mapbtn" type="button" hidden>Show all of Europe</button></div>
   </div>
   <div class="grid grid2">
     <div class="card">
@@ -243,6 +245,7 @@ const PNOUN={A:['player','players'],G:['guard','guards'],F:['forward','forwards'
 const desc=n=>`${PNOUN[S.pos][n===1?0:1]} with ${S.gp}+ games ${scope()}${S.pos==='U'?', position not specified':''}`;
 const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+stn(S.stg)+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'')+(S.age?`, aged ${S.age}–${S.age+4}`:'');
 function update(){
+  MAPFULL=false;   // a new selection zooms again
   P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&ageOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
   figs();scatter();leaders();ages();cits();map();teams();counts();
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
@@ -366,7 +369,7 @@ const stn=v=>v===2&&PO?'main-stage-only teams':STN[v];
 const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+stn(S.stg)+')':''):S.stg?stn(S.stg):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers',U:'position not specified'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
 function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
 // map zoom state (scale + translate on top of the whole-Europe view), kept between renders for the animation
-let MZ={s:1,tx:0,ty:0},MZsize='',MZraf=0;
+let MZ={s:1,tx:0,ty:0},MZsize='',MZraf=0,MAPFULL=false;
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
   const W=box.clientWidth,H=box.clientHeight,pad=W<520?18:34;
@@ -391,6 +394,11 @@ function map(){
     const k=zp.scale()/pr.scale();
     if(k>1)Z={s:k,tx:zp.translate()[0]-k*pr.translate()[0],ty:zp.translate()[1]-k*pr.translate()[1]};
   }
+  // button to switch between the zoomed selection and the whole of Europe
+  const mb=document.getElementById('mapBtn'),canZoom=Z.s>1;
+  mb.hidden=!canZoom;mb.textContent=MAPFULL?'Zoom to selection':'Show all of Europe';
+  mb.onclick=()=>{MAPFULL=!MAPFULL;map()};
+  if(MAPFULL)Z={s:1,tx:0,ty:0};
   let s=`<defs><clipPath id="mclip"><rect width="${W}" height="${H}" rx="8"/></clipPath></defs><g clip-path="url(#mclip)"><rect width="${W}" height="${H}" fill="var(--sea)"/>`;
   s+='<g id="mz">'+GEO.features.map(f=>path(f)).filter(Boolean).map(d=>`<path d="${d}" fill="var(--land)" stroke="var(--bg)" stroke-width=".8" vector-effect="non-scaling-stroke"/>`).join('')+'</g>';
   s+=cl.map((d,k)=>`<circle class="md" data-k="${k}" cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${on?(d.c?'var(--hi)':'var(--lo)'):'var(--all)'}" stroke="${d.sel?'var(--ink)':'var(--bg)'}" stroke-width="${d.sel?2.5:1.5}"/>`).join('');
@@ -418,7 +426,7 @@ function map(){
     c.onclick=()=>{hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
   const nc=new Set(CITY.map(c=>c[0])).size,nk=new Set(TC).size;
   const top=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c)[0]:null;
-  document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+(Z.s>1?'Zoomed to the coloured places. ':'')+'Dot size shows the number of teams in each place. Click a dot to select a team.';
+  document.getElementById('mpS').textContent=(on?`Coloured: places whose teams have ${desc(2)}${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+(Z.s>1?'Zoomed to the coloured places. ':canZoom?'Showing all of Europe. ':'')+'Dot size shows the number of teams in each place. Click a dot to select a team.';
   document.getElementById('mpKey').innerHTML=`<span><svg width="14" height="14" style="vertical-align:-2px"><circle cx="7" cy="7" r="${base*.9}" fill="var(--ink2)"/></svg> 1 team</span><span><svg width="18" height="18" style="vertical-align:-4px"><circle cx="9" cy="9" r="${base*Math.SQRT2*.9}" fill="var(--ink2)"/></svg> 2 teams</span><span><svg width="20" height="20" style="vertical-align:-5px"><circle cx="10" cy="10" r="${base*Math.sqrt(3)*.9}" fill="var(--ink2)"/></svg> 3 teams</span>`+(on?`<span><i style="background:var(--hi)"></i>Has matching players</span><span><i style="background:var(--lo)"></i>None</span>`:'');
 }
 function cits(){
