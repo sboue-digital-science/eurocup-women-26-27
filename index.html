@@ -29,6 +29,10 @@ header{background:var(--band);color:var(--bandink)}header.band{padding-bottom:12
 header h1{font-size:clamp(32px,5vw,50px);line-height:1.05;margin:6px 0 10px;text-wrap:balance;max-width:none}
 header p{margin:0;color:var(--bandink2);max-width:68ch}
 .kicker{color:var(--bandink2);font-size:14px}
+.ftog{display:none}
+@media(max-width:700px){.ftog{display:flex;width:100%;align-items:center;justify-content:space-between;height:44px;padding:0 14px;font:inherit;font-size:16px;font-weight:600;color:var(--bandink);background:#1f2025;border:1px solid #3a3b40;border-radius:8px;cursor:pointer}
+.ftog .chev{transition:transform .2s}.fbar.open .ftog .chev{transform:rotate(180deg)}
+.fbar:not(.open) .filters{display:none}.fbar.open .filters{margin-top:10px;max-height:calc(100vh - 90px);overflow-y:auto}}
 .fbar{position:sticky;top:0;z-index:5;background:var(--band);padding:10px max(5vw,16px) 14px;box-shadow:0 1px 0 rgba(255,255,255,.08)}
 .filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:end}
 .filters select{width:100%}
@@ -92,7 +96,7 @@ footer{color:var(--ink2);font-size:13px}
 .empty{color:var(--ink2);font-size:14px;padding:20px 0}
 @media(max-width:860px){.grid,.grid2{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){#sc{min-height:380px}#map{min-height:340px}.figs div{border-right:0;border-bottom:1px solid var(--line)}}
-@media(prefers-reduced-motion:reduce){.tip{transition:none}}
+@media(prefers-reduced-motion:reduce){.tip,.ftog .chev{transition:none}}
 </style>
 </head>
 <body>
@@ -101,7 +105,7 @@ footer{color:var(--ink2);font-size:13px}
   <h1 id="title">626 players from 63 countries in 53 teams have stepped on court so far</h1>
   <p id="lede">Pick a team to light it up; every chart follows your filters.</p>
 </div></header>
-<div class="fbar"><div class="wrap filters">
+<div class="fbar" id="fbar"><button id="fTog" class="ftog" type="button" aria-expanded="false" aria-controls="fgrid"><span id="fTogL">Filters</span><span class="chev" aria-hidden="true">▾</span></button><div class="wrap filters" id="fgrid">
     <label>Minimum games<select id="fGp"><option value="0">0+ (incl. not yet played)</option><option value="1">1+</option><option value="2" selected>2+</option><option value="3">3+</option><option value="5">5+</option></select></label>
     <label>Competition stage<select id="fStg"><option value="">All stages</option><option value="1">Qualifiers only</option><option value="2">Main stage</option><option value="3">Play-offs</option></select></label>
     <label>League country<select id="fLc"><option value="">All countries</option></select></label>
@@ -208,6 +212,8 @@ function init(){
   ct.onchange=()=>{S.cit=ct.value;update()};
   sel.onchange=()=>{S.team=+sel.value;update()};
   if(D.some(p=>p.p==='U'))document.getElementById('fPos').insertAdjacentHTML('beforeend','<option value="U">Not specified</option>');
+  const fb=document.getElementById('fbar'),ft=document.getElementById('fTog');
+  ft.onclick=()=>{const o=fb.classList.toggle('open');ft.setAttribute('aria-expanded',o)};
   document.getElementById('fPos').onchange=e=>{S.pos=e.target.value;update()};
   // age ranges in 5-year steps (15–19, 20–24, …), listing only ranges that contain at least one player
   const ag=document.getElementById('fAge'),ar=[...new Set(D.filter(p=>p.age!=null).map(p=>Math.floor(p.age/5)*5))].sort((a,b)=>a-b);
@@ -240,6 +246,8 @@ function update(){
   P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&ageOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
   figs();scatter();leaders();ages();cits();map();teams();counts();
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
+  const na=[S.gp!==2,S.stg,S.lc,S.team>=0,S.pos!=='A',S.cit,S.age].filter(Boolean).length;
+  document.getElementById('fTogL').textContent=na?`Filters · ${na} active`:'Filters';
 }
 const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
 function counts(){
