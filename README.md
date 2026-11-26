@@ -32,6 +32,13 @@ To try it on two teams first:
 2. In the repository: Settings → Actions → General → Workflow permissions → "Read and write".
 3. The job runs every Friday at 04:23 UTC (05:23 in Switzerland in winter), after the Thursday games; the Actions tab has a "Run workflow" button to run it now.
 
+## What the refresh keeps and adds
+- **Nothing is ever dropped.** Teams that FIBA stops listing, and players who disappear
+  from a team page, keep their last known data (such players are marked † in the dashboard).
+- **Competition stage** per team (`"stage"`: 1 qualifiers only, 2 main stage, 3 play-offs),
+  read from FIBA's standings: teams flagged "Qualified for Play-Off Round 1" or listed in the
+  play-off standings count as play-offs. A team's stage never goes down.
+
 ## What needs a human
 - **Cities**: FIBA doesn't publish them. They are kept from the existing `data.json`.
   When new teams join (the four 4th-placed EuroLeague Women teams enter at Play-Off Round 1),

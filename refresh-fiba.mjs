@@ -12,6 +12,11 @@
 // What it keeps from the existing data.json (not available from FIBA)
 //   - team home cities and coordinates ("city"), matched by team name
 //   - full country names ("cn")
+//   - every team and player it has seen before: a team that drops out of FIBA's
+//     list, or a player who disappears from a team, keeps their last known data
+//
+// It also records each team's furthest stage ("stage": 1 qualifiers only,
+// 2 regular season, 3 play-offs) from FIBA's standings; a stage never goes down.
 // A team that is new to the competition (e.g. EuroLeague Women clubs joining the
 // play-offs) is reported at the end; add its city to data.json by hand and it will be kept.
 //
@@ -89,6 +94,24 @@ const POS_CODE = { PG: 'Point Guard', SG: 'Shooting Guard', G: 'Guard', SF: 'Sma
 const POS_GROUP = { 'Point Guard': 'G', 'Shooting Guard': 'G', Guard: 'G', 'Small Forward': 'F', 'Power Forward': 'F', Forward: 'F', Center: 'C' };
 const r1 = x => Math.round(x * 10) / 10;
 
+// Furthest stage per FIBA teamId: 2 = in the regular-season groups,
+// 3 = flagged "Qualified for ..." (play-offs) or listed in the play-off standings.
+function stages(s) {
+  const out = new Map();
+  const section = code => {
+    const i = s.indexOf(`"standingHeaderCode":"${code}"`);
+    if (i < 0) return '';
+    const end = s.indexOf('"standingHeaderCode"', i + 10);
+    return s.slice(i, end < 0 ? s.length : end);
+  };
+  for (const m of section('RS').matchAll(/"team":(\d+)/g)) out.set(+m[1], 2);
+  if (!out.size) throw new Error('no regular-season groups found');
+  for (const m of section('PO').matchAll(/"team":(\d+)/g)) out.set(+m[1], 3);
+  for (const m of s.matchAll(/"teamsIds":\[([\d,]*)\],"text":"Qualified for[^"]*"/g))
+    for (const id of m[1].split(',').filter(Boolean)) out.set(+id, 3);
+  return out;
+}
+
 async function main() {
   const old = await readFile(OUT, 'utf8').then(JSON.parse).catch(() => ({}));
   const oldCity = new Map((old.teams || []).map((t, i) => [t, old.city?.[i] ?? null]));
@@ -116,6 +139,11 @@ async function main() {
     const country = [...roster.values()].map(r => r.clubCountryFIBACode || r.countryFIBACode).find(Boolean) || null;
     return { slug, name: info.officialName, roster, stats, listed, country };
   });
+
+  console.log('Reading standings…');
+  let stageById = null;
+  try { stageById = stages(payload(await get(`/en/events/${EVENT}/standings`))); }
+  catch (e) { console.warn('  ! standings: ' + e.message + ' (keeping previous stages)'); }
 
   const jobs = [];
   for (const t of teams) {
@@ -173,6 +201,7 @@ async function main() {
     });
   });
 
+  const oldIdx = new Map((old.teams || []).map((t, i) => [t, i]));
   const data = {
     teams: teams.map(t => t.name),
     asof,
@@ -180,11 +209,32 @@ async function main() {
     tc: teams.map(t => t.country),
     cn: old.cn || {},
     city: teams.map(t => oldCity.get(t.name) ?? null),
+    stage: teams.map(t => Math.max(stageById?.get(teamInfo.get(t.slug).teamId) || 1, old.stage?.[oldIdx.get(t.name)] || 0)),
   };
+
+  // Never lose what was there before: keep players who vanished from a team, and whole teams FIBA no longer lists.
+  if (!ONLY.length && old.players) {
+    const seen = new Set(players.map(p => data.teams[p.t] + '|' + p.n));
+    let keptPlayers = 0;
+    for (const p of old.players) {
+      const name = old.teams[p.t], ni = data.teams.indexOf(name);
+      if (ni >= 0 && p.gp > 0 && !seen.has(name + '|' + p.n)) { players.push({ ...p, t: ni, gone: true }); keptPlayers++; }
+    }
+    const keptTeams = old.teams.filter(t => !data.teams.includes(t));
+    for (const name of keptTeams) {
+      const oi = oldIdx.get(name), ni = data.teams.length;
+      data.teams.push(name); data.tc.push(old.tc?.[oi] ?? null); data.city.push(old.city?.[oi] ?? null); data.stage.push(old.stage?.[oi] || 1);
+      for (const p of old.players) if (p.t === oi) players.push({ ...p, t: ni });
+    }
+    if (keptPlayers) console.log(`Kept ${keptPlayers} player(s) no longer shown by FIBA, with their last known stats.`);
+    if (keptTeams.length) console.log(`Kept ${keptTeams.length} team(s) no longer listed by FIBA: ${keptTeams.join(', ')}.`);
+  }
   await writeFile(OUT, JSON.stringify(data));
 
   const played = players.filter(p => p.gp > 0).length;
-  console.log(`\nWrote ${OUT}: ${teams.length} teams, ${players.length} players (${played} have played), as of ${asof}.`);
+  const sc = [1, 2, 3].map(k => data.stage.filter(x => x === k).length);
+  console.log(`Stages: ${sc[0]} qualifiers only, ${sc[1]} main stage, ${sc[2]} play-offs.`);
+  console.log(`\nWrote ${OUT}: ${data.teams.length} teams, ${players.length} players (${played} have played), as of ${asof}.`);
   const noCity = teams.filter((t, i) => !data.city[i]).map(t => t.name);
   if (noCity.length) console.log(`No city yet for: ${noCity.join(', ')}. Add [city, lat, lon] for them in "city" in ${OUT}; they are left off the map until then.`);
   const newCodes = [...new Set(players.flatMap(p => p.c))].filter(c => !data.cn[c]);
