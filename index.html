@@ -209,10 +209,10 @@ const posOk=p=>S.pos==='A'||p.p===S.pos;
 const ageOk=p=>!S.age||(p.age!=null&&Math.floor(p.age)>=S.age&&Math.floor(p.age)<=S.age+4);
 function fillTeams(){
   const sel=document.getElementById('fTeam'),ids=TEAMS.map((t,i)=>i).filter(i=>(!S.lc||TC[i]===S.lc)&&stgOk(i));
-  sel.innerHTML=`<option value="-1">All ${ids.length} ${S.stg?esc(STN[S.stg]):'teams'}${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
+  sel.innerHTML=`<option value="-1">All ${ids.length} ${S.stg?esc(stn(S.stg)):'teams'}${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
   sel.value=S.team;
 }
-const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+STN[S.stg]+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'')+(S.age?`, aged ${S.age}–${S.age+4}`:'');
+const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+stn(S.stg)+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'')+(S.age?`, aged ${S.age}–${S.age+4}`:'');
 function update(){
   P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&ageOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
   figs();scatter();leaders();ages();cits();map();teams();counts();
@@ -221,7 +221,7 @@ function update(){
 const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
 function counts(){
   const cname=k=>CN[k]||k;
-  const tt=[...new Set(D.filter(p=>mt(p,['stg','team'])).map(p=>p.t))],SL={1:'Qualifiers only',2:'Main stage',3:'Play-offs'};
+  const tt=[...new Set(D.filter(p=>mt(p,['stg','team'])).map(p=>p.t))],SL={1:'Qualifiers only',2:PO?'Main stage only':'Main stage',3:'Play-offs'};
   for(const o of document.getElementById('fStg').options){if(!o.value)continue;const v=+o.value,n=tt.filter(i=>stgOk(i,v)).length;
     if(v===3&&!PO){o.textContent='Play-offs (not started yet)';o.disabled=true;continue}
     o.textContent=`${SL[v]} (${n} team${n===1?'':'s'})`;o.disabled=!n&&v!==S.stg}
@@ -308,11 +308,13 @@ function ages(){
   const yg=tm.filter(p=>p.age<20).length;
   document.getElementById('agS').textContent=sel?`All ${base.length} players (${S.gp}+ games) by age on ${ASOF}; the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`Players by age on ${ASOF}. ${yg} of ${tm.length} ${yg===1?'is':'are'} under 20.`;
 }
-// stage filter: main stage = reached at least the regular season (play-off teams included)
-const stgOk=(i,v=S.stg)=>!v||(v===2?STG[i]>=2:STG[i]===v);
+// stage filter: before the play-offs start, main stage = reached at least the regular season (play-off
+// qualifiers included); once they start, it becomes 'main stage only' and play-off teams move to Play-offs
+const stgOk=(i,v=S.stg)=>!v||(v===2&&!PO?STG[i]>=2:STG[i]===v);
 const filtOn=()=>S.team>=0||S.stg||S.lc||S.cit||S.pos!=='A'||S.age;
 const STN={1:'qualifier-only teams',2:'main-stage teams',3:'play-off teams'};
-const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+STN[S.stg]+')':''):S.stg?STN[S.stg]:'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
+const stn=v=>v===2&&PO?'main-stage-only teams':STN[v];
+const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+stn(S.stg)+')':''):S.stg?stn(S.stg):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:'',S.age?`aged ${S.age}–${S.age+4}`:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
 function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
