@@ -103,7 +103,7 @@ footer{color:var(--ink2);font-size:13px}
     <label>Team<select id="fTeam"><option value="-1">All 53 teams</option></select></label>
     <label>Position<select id="fPos"><option value="A">All positions</option><option value="G">Guards</option><option value="F">Forwards</option><option value="C">Centers</option></select></label>
     <label>Citizenship<select id="fCit"><option value="">All citizenships</option></select></label>
-    <label>Age range<select id="fAge"><option value="0">All ages</option><option value="16">16–20</option><option value="21">21–25</option><option value="26">26–30</option><option value="31">31–35</option><option value="36">36–40</option></select></label>
+    <label>Age range<select id="fAge"><option value="0">All ages</option><option value="15">15–19</option><option value="20">20–24</option><option value="25">25–29</option><option value="30">30–34</option><option value="35">35–39</option><option value="40">40–44</option></select></label>
 
     <button id="fClr" class="clr" type="button">Clear filters</button>
 </div></div>
@@ -284,7 +284,7 @@ function ages(){
   const box=document.getElementById('age'),svg=box.querySelector('svg');if(!D)return;
   const W=box.clientWidth,H=box.clientHeight,m={t:22,r:6,b:30,l:30};
   const sel=filtOn(),tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
-  const bins=d3.range(15,39).map(a=>({a,n:base.filter(p=>Math.floor(p.age)===a).length,k:tm.filter(p=>Math.floor(p.age)===a).length}));
+  const bins=d3.range(15,Math.max(39,Math.floor(d3.max(D,p=>p.age)||0)+1)).map(a=>({a,n:base.filter(p=>Math.floor(p.age)===a).length,k:tm.filter(p=>Math.floor(p.age)===a).length}));
   const x=d3.scaleBand().domain(bins.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
   const y=d3.scaleLinear().domain([0,d3.max(bins,b=>b.n)||1]).nice().range([H-m.b,m.t]);
   const bw=Math.min(24,x.bandwidth()),off=(x.bandwidth()-bw)/2,rad=Math.min(4,bw/2);
