@@ -62,6 +62,7 @@ main.band{padding-top:20px}
 .fgm .row{grid-template-columns:minmax(0,1fr) 116px}
 .tpct .trow{grid-template-columns:28px minmax(0,1fr) 140px}.tpct .val{display:flex;justify-content:flex-end;gap:4px}.tpct .fa{width:80px}
 .ph{font-size:14px;font-weight:600;margin:12px 0 0}
+.def{margin:0;font-size:13px;line-height:1.4;color:var(--ink2)}#t2pad{padding-bottom:12px}
 .tgap{color:var(--ink2);padding:0 6px 0 22px;line-height:1.2;letter-spacing:2px}
 @media(max-width:600px){.tpct .trow{grid-template-columns:22px minmax(0,1fr) 128px}.tpct .trow .tb span{white-space:normal}.tpct .fa{width:72px}}
 .fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
@@ -120,12 +121,13 @@ footer{color:var(--ink2);font-size:13px}
       <h2>Team scoring</h2>
       <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
       <div class="tabs" id="tsTabs"></div>
+      <div id="t1pad" aria-hidden="true"></div>
       <div class="teams" id="teams"></div>
     </div>
     <div class="card">
       <h2>Team efficiency</h2>
       <p class="sub"><span class="nT2">Efficiency per game, all 53 teams</span>. Click a team to select it.</p>
-      <div id="t2pad" aria-hidden="true"></div>
+      <div id="t2pad"><p class="def">Team efficiency = the sum of all its players’ FIBA efficiency (points + rebounds + assists + steals + blocks − missed shots − turnovers), divided by the team’s games played.</p></div>
       <div class="teams" id="teams2"></div>
     </div>
   </div>
@@ -398,12 +400,12 @@ const TSM=[['pts','Points per game'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'
 const TSS={pts:'Points per game',fg:'Field goal % (made/attempted)',p2:'2-point % (made/attempted)',p3:'3-point % (made/attempted)',ft:'Free throw % (made/attempted)'};
 // keep the Team efficiency list level with the Team scoring list (which has tabs above it) when side by side
 function alignTeams(){
-  const pad=document.getElementById('t2pad'),a=document.getElementById('teams'),b=document.getElementById('teams2');
-  pad.style.height='0px';
+  const pad=document.getElementById('t2pad'),pad1=document.getElementById('t1pad'),a=document.getElementById('teams'),b=document.getElementById('teams2');
+  pad.style.minHeight='0px';pad1.style.height='0px';
   const ca=a.closest('.card').getBoundingClientRect(),cb=b.closest('.card').getBoundingClientRect();
   if(Math.abs(ca.top-cb.top)>2)return;   // cards stacked (phones): nothing to align
   const dy=a.getBoundingClientRect().top-b.getBoundingClientRect().top;
-  if(dy>0)pad.style.height=dy+'px';
+  if(dy>0)pad.style.minHeight=(pad.offsetHeight+dy)+'px';else if(dy<0)pad1.style.height=(-dy)+'px';
 }
 addEventListener('resize',()=>{if(TM.length)alignTeams()});
 function teams(){
