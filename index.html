@@ -388,7 +388,7 @@ function cits(){
   const ps=P.filter(inScope),c=d3.rollups(ps.flatMap(p=>p.c),v=>v.length,k=>k).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,12);
   const mx=c[0]?c[0][1]:1;
   document.getElementById('ctS').textContent=`Top citizenships among the ${ps.length} ${desc(ps.length)}. A dual national counts for each passport.`;
-  document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
+  document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(CN[k]||k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
 }
 // team scoring metrics: total points, then shooting percentages with made/attempted
 const TSM=[['pts','Points per game'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'],['ft','FT %']];
