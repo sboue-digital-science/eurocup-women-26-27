@@ -17,6 +17,8 @@
 //
 // It also records each team's furthest stage ("stage": 1 qualifiers only,
 // 2 regular season, 3 play-offs) from FIBA's standings; a stage never goes down.
+// "po" turns true once FIBA's play-off standings list teams (the dashboard
+// keeps its Play-offs filter greyed out until then).
 // A team that is new to the competition (e.g. EuroLeague Women clubs joining the
 // play-offs) is reported at the end; add its city to data.json by hand and it will be kept.
 //
@@ -106,7 +108,9 @@ function stages(s) {
   };
   for (const m of section('RS').matchAll(/"team":(\d+)/g)) out.set(+m[1], 2);
   if (!out.size) throw new Error('no regular-season groups found');
-  for (const m of section('PO').matchAll(/"team":(\d+)/g)) out.set(+m[1], 3);
+  let po = false;
+  for (const m of section('PO').matchAll(/"team":(\d+)/g)) { out.set(+m[1], 3); po = true; }
+  out.po = po;
   for (const m of s.matchAll(/"teamsIds":\[([\d,]*)\],"text":"Qualified for[^"]*"/g))
     for (const id of m[1].split(',').filter(Boolean)) out.set(+id, 3);
   return out;
@@ -213,6 +217,7 @@ async function main() {
     cn: old.cn || {},
     city: teams.map(t => oldCity.get(t.name) ?? null),
     stage: teams.map(t => Math.max(stageById?.get(teamInfo.get(t.slug).teamId) || 1, old.stage?.[oldIdx.get(t.name)] || 0)),
+    po: !!(stageById?.po || old.po),   // play-offs have started (teams listed in FIBA's play-off standings)
   };
 
   // Never lose what was there before: keep players who vanished from a team, and whole teams FIBA no longer lists.
@@ -236,7 +241,7 @@ async function main() {
 
   const played = players.filter(p => p.gp > 0).length;
   const sc = [1, 2, 3].map(k => data.stage.filter(x => x === k).length);
-  console.log(`Stages: ${sc[0]} qualifiers only, ${sc[1]} main stage, ${sc[2]} play-offs.`);
+  console.log(`Stages: ${sc[0]} qualifiers only, ${sc[1]} main stage only, ${sc[2]} play-offs (${data.po ? 'play-offs started' : 'play-offs not started yet'}).`);
   console.log(`\nWrote ${OUT}: ${data.teams.length} teams, ${players.length} players (${played} have played), as of ${asof}.`);
   const noCity = teams.filter((t, i) => !data.city[i]).map(t => t.name);
   if (noCity.length) console.log(`No city yet for: ${noCity.join(', ')}. Add [city, lat, lon] for them in "city" in ${OUT}; they are left off the map until then.`);

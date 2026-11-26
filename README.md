@@ -37,7 +37,9 @@ To try it on two teams first:
   from a team page, keep their last known data (such players are marked † in the dashboard).
 - **Competition stage** per team (`"stage"`: 1 qualifiers only, 2 main stage, 3 play-offs),
   read from FIBA's standings: teams flagged "Qualified for Play-Off Round 1" or listed in the
-  play-off standings count as play-offs. A team's stage never goes down.
+  play-off standings count as play-offs. A team's stage never goes down. In the dashboard,
+  "Main stage" includes the play-off teams, and "Play-offs" stays greyed out until FIBA's
+  play-off standings list teams (`"po": true`).
 
 ## What needs a human
 - **Cities**: FIBA doesn't publish them. They are kept from the existing `data.json`.

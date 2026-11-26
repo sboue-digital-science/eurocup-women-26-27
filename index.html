@@ -173,14 +173,14 @@ const f1=d3.format('.1f'),pct=d3.format('.0%');
 const S={stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
 const M=[['eff','Efficiency'],['pts','Points'],['ast','Assists'],['reb','Rebounds'],['stl','Steals'],['blk','Blocks'],['fg','FG%'],['min','Minutes']];
 const tip=document.getElementById('tip');
-let STG=[],D,TEAMS,TC,CN,P=[],TM=[];
+let STG=[],PO=false,D,TEAMS,TC,CN,P=[],TM=[];
 const pg=(p,k)=>p.gp?p[k]/p.gp:0;
 const showTip=(e,html)=>{tip.innerHTML=html;tip.style.opacity=1;const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px'};
 const hideTip=()=>tip.style.opacity=0;
 const pname=p=>esc(p.n)+(p.gone?' †':'');
 
 let GEO,CITY,FL={},ASOF='';
-Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r.json()),fetch('flags.json').then(r=>r.json()).catch(()=>({}))]).then(([d,g,f])=>{FL=f;D=d.players;TEAMS=d.teams;STG=d.stage||d.teams.map(()=>2);ASOF=d3.timeFormat('%-d %b %Y')(new Date(d.asof+'T12:00:00'));TC=d.tc;CN=d.cn;CITY=d.city;GEO=g;init()});
+Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r.json()),fetch('flags.json').then(r=>r.json()).catch(()=>({}))]).then(([d,g,f])=>{FL=f;D=d.players;TEAMS=d.teams;STG=d.stage||d.teams.map(()=>2);PO=!!d.po;ASOF=d3.timeFormat('%-d %b %Y')(new Date(d.asof+'T12:00:00'));TC=d.tc;CN=d.cn;CITY=d.city;GEO=g;init()});
 
 function init(){
   const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
@@ -195,7 +195,7 @@ function init(){
   ct.insertAdjacentHTML('beforeend',cts.map(([k,n])=>`<option value="${esc(k)}">${esc(cname(k))} (${n})</option>`).join(''));
   fillTeams();
   lc.onchange=()=>{S.lc=lc.value;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc)S.team=-1;fillTeams();update()};
-  const sg=document.getElementById('fStg');sg.onchange=()=>{S.stg=+sg.value;if(S.team>=0&&S.stg&&STG[S.team]!==S.stg)S.team=-1;fillTeams();update()};
+  const sg=document.getElementById('fStg');sg.onchange=()=>{S.stg=+sg.value;if(S.team>=0&&!stgOk(S.team))S.team=-1;fillTeams();update()};
   ct.onchange=()=>{S.cit=ct.value;update()};
   sel.onchange=()=>{S.team=+sel.value;update()};
   document.querySelectorAll('#fPos button').forEach(b=>b.onclick=()=>{S.pos=b.dataset.v;document.querySelectorAll('#fPos button').forEach(x=>x.setAttribute('aria-pressed',x===b));update()});
@@ -211,21 +211,23 @@ function init(){
 }
 const posOk=p=>S.pos==='A'||p.p===S.pos;
 function fillTeams(){
-  const sel=document.getElementById('fTeam'),ids=TEAMS.map((t,i)=>i).filter(i=>(!S.lc||TC[i]===S.lc)&&(!S.stg||STG[i]===S.stg));
+  const sel=document.getElementById('fTeam'),ids=TEAMS.map((t,i)=>i).filter(i=>(!S.lc||TC[i]===S.lc)&&stgOk(i));
   sel.innerHTML=`<option value="-1">All ${ids.length} ${S.stg?esc(STN[S.stg]):'teams'}${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
   sel.value=S.team;
 }
 const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.stg?'at '+STN[S.stg]+(S.lc?' in '+(CN[S.lc]||S.lc):''):S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'');
 function update(){
-  P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&(!S.stg||STG[p.t]===S.stg)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
+  P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&stgOk(p.t)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
   figs();scatter();leaders();ages();cits();map();teams();counts();
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
 }
-const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('stg')||!S.stg||STG[p.t]===S.stg)&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
+const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
 function counts(){
   const cname=k=>CN[k]||k;
-  const ts=d3.rollup(D.filter(p=>mt(p,['stg','team'])),v=>new Set(v.map(p=>p.t)).size,p=>STG[p.t]),SL={1:'Qualifiers only',2:'Main stage',3:'Play-offs'};
-  for(const o of document.getElementById('fStg').options){if(!o.value)continue;const n=ts.get(+o.value)||0;o.textContent=`${SL[o.value]} (${n} team${n===1?'':'s'})`;o.disabled=!n&&+o.value!==S.stg}
+  const tt=[...new Set(D.filter(p=>mt(p,['stg','team'])).map(p=>p.t))],SL={1:'Qualifiers only',2:'Main stage',3:'Play-offs'};
+  for(const o of document.getElementById('fStg').options){if(!o.value)continue;const v=+o.value,n=tt.filter(i=>stgOk(i,v)).length;
+    if(v===3&&!PO){o.textContent='Play-offs (not started yet)';o.disabled=true;continue}
+    o.textContent=`${SL[v]} (${n} team${n===1?'':'s'})`;o.disabled=!n&&v!==S.stg}
   const tl=d3.rollup(D.filter(p=>mt(p,['lc','team'])),v=>new Set(v.map(p=>p.t)).size,p=>TC[p.t]);
   for(const o of document.getElementById('fLc').options){if(!o.value)continue;const n=tl.get(o.value)||0;o.textContent=`${cname(o.value)} (${n} team${n===1?'':'s'})`;o.disabled=!n&&o.value!==S.lc}
   const cc=d3.rollup(D.filter(p=>mt(p,['cit'])).flatMap(p=>p.c),v=>v.length,k=>k);
@@ -311,10 +313,12 @@ function ages(){
   const yg=tm.filter(p=>p.age<20).length;
   document.getElementById('agS').textContent=sel?`All ${base.length} players (${S.gp}+ games) by age on ${ASOF}; the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`Players by age on ${ASOF}. ${yg} of ${tm.length} ${yg===1?'is':'are'} under 20.`;
 }
+// stage filter: main stage = reached at least the regular season (play-off teams included)
+const stgOk=(i,v=S.stg)=>!v||(v===2?STG[i]>=2:STG[i]===v);
 const filtOn=()=>S.team>=0||S.stg||S.lc||S.cit||S.pos!=='A';
 const STN={1:'qualifier-only teams',2:'main-stage teams',3:'play-off teams'};
 const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc)+(S.stg?' ('+STN[S.stg]+')':''):S.stg?STN[S.stg]:'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
-function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&S.stg&&STG[S.team]!==S.stg){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
+function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}if(S.team>=0&&!stgOk(S.team)){S.stg=0;document.getElementById('fStg').value=''}fillTeams();update()}
 function map(){
   const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
   const W=box.clientWidth,H=box.clientHeight,pad=W<520?18:34;
