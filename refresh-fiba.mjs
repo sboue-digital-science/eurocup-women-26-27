@@ -123,14 +123,25 @@ async function main() {
     for (const id of ids) jobs.push({ t, id });
   }
   console.log(`Reading ${jobs.length} player pages…`);
+  // FIBA sometimes answers the first request for a player page with a cut-down page that
+  // lacks the profile block (birth date, height, citizenships); asking again gets the full one.
+  const slugify = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  let missing = 0;
   const pages = await pool(jobs, async ({ t, id }) => {
-    try {
-      const s = payload(await get(`/en/events/${EVENT}/teams/${t.slug}/${id}-x`));
-      const i = s.indexOf('"birthDate"');
-      if (i < 0) return {};
-      return objects(s.slice(s.lastIndexOf('{"playerId"', i)), 'playerId')[0] || {};
-    } catch (e) { console.warn('  ! ' + e.message); return {}; }
+    const who = t.roster.get(id) || t.stats.get(id) || {};
+    const path = `/en/events/${EVENT}/teams/${t.slug}/${id}-${slugify(`${who.firstName || ''} ${who.lastName || ''}`) || 'x'}`;
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const s = payload(await get(path));
+        const i = s.indexOf('"birthDate"');
+        if (i >= 0) return objects(s.slice(s.lastIndexOf('{"playerId"', i)), 'playerId')[0] || {};
+      } catch (e) { if (attempt === 4) console.warn('  ! ' + e.message); }
+      await sleep(2000 * attempt);
+    }
+    missing++;
+    return {};
   });
+  if (missing) console.log(`  ${missing} player page(s) had no profile data; roster values used for those.`);
 
   const players = [];
   jobs.forEach(({ t, id }, k) => {
