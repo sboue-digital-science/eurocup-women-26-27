@@ -60,6 +60,8 @@ main.band{padding-top:20px}
 .flag{width:16px;height:12px;vertical-align:-1px;border-radius:2px;box-shadow:0 0 0 1px var(--line);margin-left:4px}.flagx{font-size:11px;color:var(--ink2);border:1px solid var(--line);border-radius:2px;padding:0 2px;margin-left:4px}
 .row .who small{color:var(--ink2);font-size:13px}
 .fgm .row{grid-template-columns:minmax(0,1fr) 116px}
+.tpct .trow{grid-template-columns:28px minmax(0,1fr) 140px}.tpct .val{display:flex;justify-content:flex-end;gap:4px}.tpct .fa{width:80px}
+@media(max-width:600px){.tpct .trow{grid-template-columns:22px minmax(0,1fr) 128px}.tpct .trow .tb span{white-space:normal}.tpct .fa{width:72px}}
 .fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
 .row .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;grid-row:span 2}
 .bar{height:8px;border-radius:0 4px 4px 0;background:var(--hi)}
@@ -147,7 +149,8 @@ footer{color:var(--ink2);font-size:13px}
   <div class="grid grid2">
     <div class="card">
       <h2>Team scoring</h2>
-      <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
+      <p class="sub"><span class="nT">Total points, all 53 teams</span>. Click a team to select it.</p>
+      <div class="tabs" id="tsTabs"></div>
       <div class="teams" id="teams"></div>
     </div>
     <div class="card">
@@ -165,7 +168,7 @@ footer{color:var(--ink2);font-size:13px}
 {
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f1=d3.format('.1f'),pct=d3.format('.0%');
-const S={age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
+const S={ts:'pts',age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
 const M=[['eff','Efficiency'],['pts','Points'],['ast','Assists'],['reb','Rebounds'],['stl','Steals'],['blk','Blocks'],['fg','FG%'],['min','Minutes']];
 const tip=document.getElementById('tip');
 let STG=[],PO=false,D,TEAMS,TC,CN,P=[],TM=[];
@@ -181,7 +184,7 @@ function init(){
   const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
   document.getElementById('title').textContent=`${played.length} players from ${nc} countries in ${nt} teams have stepped on court so far`;
   document.getElementById('upd').textContent='last updated '+ASOF;document.getElementById('asof2').textContent=ASOF;
-  document.querySelector('.nT').textContent=`Points per game, all ${nt} teams`;document.querySelector('.nT2').textContent=`Efficiency per game, all ${nt} teams`;
+  document.querySelector('.nT2').textContent=`Efficiency per game, all ${nt} teams`;
   const sel=document.getElementById('fTeam'),lc=document.getElementById('fLc'),ct=document.getElementById('fCit');
   const cname=k=>CN[k]||k;
   const lcs=d3.rollups(TC,v=>v.length,k=>k).sort((a,b)=>cname(a[0]).localeCompare(cname(b[0])));
@@ -204,7 +207,10 @@ function init(){
   document.querySelectorAll('#ldTabs button').forEach(b=>b.onclick=()=>{S.metric=b.dataset.k;document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));leaders()});
   // team aggregates (independent of filters)
   const g=d3.group(D,p=>p.t);
-  TM=TEAMS.map((n,i)=>{const ps=g.get(i)||[];const gp=d3.max(ps,p=>p.gp)||0;return{i,n,gp,ppg:gp?d3.sum(ps,p=>p.pts)/gp:0,epg:gp?d3.sum(ps,p=>p.eff)/gp:0}});
+  TM=TEAMS.map((n,i)=>{const ps=g.get(i)||[];const gp=d3.max(ps,p=>p.gp)||0;const sm=k=>d3.sum(ps,p=>p[k]),fgm=sm('fgm'),fga=sm('fga'),tpm=sm('tpm'),tpa=sm('tpa');
+    return{i,n,gp,epg:gp?sm('eff')/gp:0,pts:sm('pts'),fg:[fgm,fga],p2:[fgm-tpm,fga-tpa],p3:[tpm,tpa],ft:[sm('ftm'),sm('fta')]}});
+  document.getElementById('tsTabs').innerHTML=TSM.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.ts}">${l}</button>`).join('');
+  document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams()});
   for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
   update();
 }
@@ -359,11 +365,17 @@ function cits(){
   document.getElementById('ctS').textContent=`Top citizenships among ${ps.length} players. A dual national counts for each passport.`;
   document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
 }
+// team scoring metrics: total points, then shooting percentages with made/attempted
+const TSM=[['pts','Total points'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'],['ft','FT %']];
+const TSS={pts:'Total points',fg:'Field goal % (made/attempted)',p2:'2-point % (made/attempted)',p3:'3-point % (made/attempted)',ft:'Free throw % (made/attempted)'};
 function teams(){
-  for(const [id,k] of [['teams','ppg'],['teams2','epg']]){
-    const t=TM.filter(t=>t.gp).sort((a,b)=>b[k]-a[k]),mx=t[0][k];
-    const el=document.getElementById(id);
-    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${d[k]/mx*100}%"></div></div><span class="val">${f1(d[k])}</span></div>`).join('');
+  const pc=S.ts!=='pts',nt=TM.filter(t=>t.gp).length;
+  document.querySelector('.nT').textContent=`${TSS[S.ts]}, all ${nt} teams`;
+  for(const [id,k] of [['teams',S.ts],['teams2','epg']]){
+    const pct=id==='teams'&&pc,vv=d=>pct?(d[k][1]?d[k][0]/d[k][1]:0):d[k];
+    const t=TM.filter(t=>t.gp).sort((a,b)=>vv(b)-vv(a)),mx=vv(t[0])||1;
+    const el=document.getElementById(id);el.classList.toggle('tpct',pct);
+    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${vv(d)/mx*100}%"></div></div><span class="val">${pct?`<span class="fp">${f1(vv(d)*100)}%</span><small class="fa">(${d[k][0]}/${d[k][1]})</small>`:k==='pts'?d[k]:f1(d[k])}</span></div>`).join('');
     el.querySelectorAll('.trow').forEach(r=>{const go=()=>pickTeam(+r.dataset.i);r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
     const on=el.querySelector('.on');if(on)el.scrollTop=on.offsetTop-el.offsetTop-el.clientHeight/2;
   }
