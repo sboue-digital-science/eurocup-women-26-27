@@ -116,17 +116,23 @@ footer{color:var(--ink2);font-size:13px}
 <main class="band"><div class="wrap" style="display:grid;gap:20px">
   <div class="grid grid2">
     <div class="card">
-      <h2>Minutes against efficiency</h2>
-      <p class="sub">Each dot is a player: minutes per game across, FIBA efficiency per game up.</p>
-      <div class="key" id="scKey"></div>
-      <div class="fig" id="sc"><svg role="img" aria-label="Scatter of minutes per game against efficiency per game"></svg></div>
+      <h2>Team scoring</h2>
+      <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
+      <div class="tabs" id="tsTabs"></div>
+      <div class="teams" id="teams"></div>
     </div>
     <div class="card">
-      <h2 id="ldT">Leaders</h2>
-      <p class="sub" id="ldS"></p>
-      <div class="tabs" id="ldTabs"></div>
-      <div id="leaders"></div>
+      <h2>Team efficiency</h2>
+      <p class="sub"><span class="nT2">Efficiency per game, all 53 teams</span>. Click a team to select it.</p>
+      <div id="t2pad" aria-hidden="true"></div>
+      <div class="teams" id="teams2"></div>
     </div>
+  </div>
+  <div class="card">
+    <h2>Where the teams play</h2>
+    <p class="sub" id="mpS"></p>
+    <div class="key" id="mpKey"></div>
+    <div class="fig" id="map"><svg role="img" aria-label="Map of team home cities"></svg></div>
   </div>
   <div class="grid grid2">
     <div class="card">
@@ -141,24 +147,18 @@ footer{color:var(--ink2);font-size:13px}
       <div id="cit"></div>
     </div>
   </div>
-  <div class="card">
-    <h2>Where the teams play</h2>
-    <p class="sub" id="mpS"></p>
-    <div class="key" id="mpKey"></div>
-    <div class="fig" id="map"><svg role="img" aria-label="Map of team home cities"></svg></div>
-  </div>
   <div class="grid grid2">
     <div class="card">
-      <h2>Team scoring</h2>
-      <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
-      <div class="tabs" id="tsTabs"></div>
-      <div class="teams" id="teams"></div>
+      <h2>Minutes against efficiency</h2>
+      <p class="sub">Each dot is a player: minutes per game across, FIBA efficiency per game up.</p>
+      <div class="key" id="scKey"></div>
+      <div class="fig" id="sc"><svg role="img" aria-label="Scatter of minutes per game against efficiency per game"></svg></div>
     </div>
     <div class="card">
-      <h2>Team efficiency</h2>
-      <p class="sub"><span class="nT2">Efficiency per game, all 53 teams</span>. Click a team to select it.</p>
-      <div id="t2pad" aria-hidden="true"></div>
-      <div class="teams" id="teams2"></div>
+      <h2 id="ldT">Leaders</h2>
+      <p class="sub" id="ldS"></p>
+      <div class="tabs" id="ldTabs"></div>
+      <div id="leaders"></div>
     </div>
   </div>
   <footer>Source: FIBA, fiba.basketball, EuroCup Women 2026-27 team and player pages, data as of <span id="asof2">26 Nov 2026</span>. Efficiency is FIBA's: points + rebounds + assists + steals + blocks − missed shots − turnovers. Players on a roster who have not played yet appear only with the 0+ games filter, with all stats at zero. A player listed with † has left the team's current roster. Team home cities are not in the FIBA data; they were added from public information on each club. Basemap: Natural Earth via world-atlas. Flags: flag-icons.</footer>
