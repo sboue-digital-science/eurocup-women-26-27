@@ -1,0 +1,28 @@
+# Re-pulls EuroCup Women data from FIBA every day and commits the new data.json.
+# Lives in .github/workflows/ of the GitHub repository that hosts the dashboard files.
+name: Refresh FIBA data
+
+on:
+  schedule:
+    - cron: '23 4 * * *'   # every day at 04:23 UTC (05:23 Swiss winter time)
+  workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node refresh-fiba.mjs data.json
+      - name: Commit the new data if anything changed
+        run: |
+          if git diff --quiet data.json; then echo "No changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Refresh FIBA data"
+          git push

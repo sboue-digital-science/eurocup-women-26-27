@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EuroCup Women player explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a newspaper sports-desk graphic — exact, calm, the numbers lead.
+   IDEA: a box score sheet pinned under an arena scoreboard.
+   PICTURE: one large scatter of every player (minutes vs efficiency), the chosen team lit in the accent colour.
+   COLOUR and TYPE: scoreboard black band, white sheet, #951B81 as the only accent; Barlow Condensed headings, Barlow text.
+   LAYOUT: band with title + filters, figure strip, scatter beside leaders, then age, passports, teams, full table. */
+:root{color-scheme:light dark;
+ --bg:light-dark(#ffffff,#121316);--plane:light-dark(#f6f5f2,#0b0b0c);
+ --ink:light-dark(#191919,#efefef);--ink2:light-dark(#666666,#9c9c9c);
+ --grid:light-dark(#e7e7e7,#2c2d30);--axis:light-dark(#c2c2c2,#474747);
+ --hi:light-dark(#951B81,#c64fae);--lo:light-dark(#cfd0d3,#45474c);--all:var(--hi);
+ --sea:light-dark(#eef3f6,#16191d);--land:light-dark(#e2e0da,#2a2c31);
+ --band:#141519;--bandink:#f3f1ec;--bandink2:#a9a7a2;--line:light-dark(rgba(11,11,11,.1),rgba(255,255,255,.1))}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--plane);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.num{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700}
+.band{padding:clamp(24px,4vw,52px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+header{background:var(--band);color:var(--bandink)}header.band{padding-bottom:12px}
+header h1{font-size:clamp(32px,5vw,50px);line-height:1.05;margin:6px 0 10px;text-wrap:balance;max-width:28ch}
+header p{margin:0;color:var(--bandink2);max-width:68ch}
+.kicker{color:var(--bandink2);font-size:14px}
+.fbar{position:sticky;top:0;z-index:5;background:var(--band);padding:10px max(5vw,16px) 14px;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+.filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:end}
+.filters select{width:170px}.filters #fGp{width:112px}.filters input{width:160px}.seg button{padding:0 11px}
+@media(min-width:701px){.filters>*{flex:1 1 170px}.filters>div{flex-basis:300px}.filters select,.filters #fGp{width:100%}.seg button{flex:1}}
+@media(min-width:1000px){.filters{flex-wrap:nowrap}.filters>*{flex:1 1 0}.filters>div{flex:1.7 1 0;min-width:300px}}
+@media(max-width:700px){.filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.filters>*{flex:none}}
+.filters label{display:grid;gap:4px;font-size:13px;color:var(--bandink2)}
+select,input{font:inherit;font-size:16px;height:44px;border-radius:8px;border:1px solid #3a3b40;background:#1f2025;color:var(--bandink);padding:0 12px}
+input{width:min(240px,80vw)}
+.clr{font:inherit;font-size:15px;height:44px;padding:0 16px;border-radius:8px;border:1px solid #3a3b40;background:transparent;color:var(--bandink);cursor:pointer;white-space:nowrap}.clr:disabled{opacity:.4;cursor:default}.filters>.clr{flex:none!important}
+.seg{display:flex;border:1px solid #3a3b40;border-radius:8px;overflow:hidden;height:44px}
+.seg button{font:inherit;font-size:15px;background:#1f2025;color:var(--bandink2);border:0;padding:0 14px;min-width:44px;cursor:pointer}
+.seg button+button{border-left:1px solid #3a3b40}
+.seg button[aria-pressed=true]{background:var(--hi);color:#fff}
+button:focus-visible,select:focus-visible,input:focus-visible,.trow:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
+main.band{padding-top:20px}
+.figband{padding:clamp(20px,3vw,32px) max(5vw,16px) 0}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.figs div{padding:18px 20px;border-right:1px solid var(--line)}.figs div:last-child{border-right:0}
+.figs .num{font-size:clamp(30px,4vw,40px);line-height:1;display:block}
+.figs span{font-size:14px;color:var(--ink2)}
+.grid{display:grid;gap:20px;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.card{background:var(--bg);border-radius:12px;padding:20px;border:1px solid var(--line)}
+.card h2{font-size:24px;line-height:1.1;margin:0 0 4px}
+.card .sub{margin:0 0 14px;color:var(--ink2);font-size:14px}
+.fig{position:relative;min-height:340px}.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#sc{min-height:460px}#map{min-height:540px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tabs button{font:inherit;font-size:14px;height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:transparent;color:var(--ink2);cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:2px 10px;align-items:center;padding:5px 0}
+.row .who{font-size:15px;line-height:1.3}
+.flag{width:16px;height:12px;vertical-align:-1px;border-radius:2px;box-shadow:0 0 0 1px var(--line);margin-left:4px}.flagx{font-size:11px;color:var(--ink2);border:1px solid var(--line);border-radius:2px;padding:0 2px;margin-left:4px}
+.row .who small{color:var(--ink2);font-size:13px}
+.fgm .row{grid-template-columns:minmax(0,1fr) 116px}
+.fgm .val{display:flex;justify-content:flex-end;gap:4px}.fp{width:52px;text-align:right}.fa{width:58px;text-align:left;color:var(--ink2);font-weight:400;font-size:13px}
+.row .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;grid-row:span 2}
+.bar{height:8px;border-radius:0 4px 4px 0;background:var(--hi)}
+.bar.all{background:var(--all)}
+.trow{display:grid;grid-template-columns:28px minmax(0,1fr) 44px;gap:10px;align-items:center;padding:4px 6px;border-radius:6px;cursor:pointer}
+.trow:hover{background:var(--plane)}
+.trow .rk{color:var(--ink2);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.trow .tb{display:grid;gap:2px}.trow .tb span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .bar{background:var(--lo)}.trow.on .bar{background:var(--hi)}.trow.on span{font-weight:600}
+.trow .val{text-align:right;font-variant-numeric:tabular-nums;font-size:14px}
+.teams{max-height:460px;overflow-y:auto;padding-right:4px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-weight:600;color:var(--ink2);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--bg)}
+th[aria-sort]{color:var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.more{margin-top:12px;font:inherit;height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:8px;font-size:13px;line-height:1.35;opacity:0;transition:opacity .12s;z-index:9;max-width:240px}
+.tip b{font-size:15px}
+.key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-bottom:8px}
+.key i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+footer{color:var(--ink2);font-size:13px}
+.note{margin:12px 0 0;font-size:13px;color:var(--ink2)}
+.empty{color:var(--ink2);font-size:14px;padding:20px 0}
+@media(max-width:860px){.grid,.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){#sc{min-height:380px}#map{min-height:340px}.figs div{border-right:0;border-bottom:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+</head>
+<body>
+<header class="band"><div class="wrap">
+  <div class="kicker">FIBA EuroCup Women 2026-27 · season to date · <span id="upd">last updated 26 Nov 2026</span></div>
+  <h1 id="title">626 players from 63 countries in 53 teams have stepped on court so far</h1>
+  <p id="lede">Pick a team to light it up; every chart follows your filters.</p>
+</div></header>
+<div class="fbar"><div class="wrap filters">
+    <label>Minimum games<select id="fGp"><option value="0">0+ (incl. not yet played)</option><option value="1">1+</option><option value="2" selected>2+</option><option value="3">3+</option><option value="5">5+</option></select></label>
+    <label>League country<select id="fLc"><option value="">All countries</option></select></label>
+    <label>Team<select id="fTeam"><option value="-1">All 53 teams</option></select></label>
+    <label>Citizenship<select id="fCit"><option value="">All citizenships</option></select></label>
+    <div><div style="font-size:13px;color:var(--bandink2);margin-bottom:4px">Position</div>
+      <div class="seg" id="fPos"><button data-v="A" aria-pressed="true">All</button><button data-v="G" aria-pressed="false">Guards</button><button data-v="F" aria-pressed="false">Forwards</button><button data-v="C" aria-pressed="false">Centers</button></div></div>
+
+    <button id="fClr" class="clr" type="button">Clear filters</button>
+</div></div>
+
+<section class="figband"><div class="wrap figs" id="figs"></div></section>
+
+<main class="band"><div class="wrap" style="display:grid;gap:20px">
+  <div class="grid grid2">
+    <div class="card">
+      <h2>Minutes against efficiency</h2>
+      <p class="sub">Each dot is a player: minutes per game across, FIBA efficiency per game up.</p>
+      <div class="key" id="scKey"></div>
+      <div class="fig" id="sc"><svg role="img" aria-label="Scatter of minutes per game against efficiency per game"></svg></div>
+    </div>
+    <div class="card">
+      <h2 id="ldT">Leaders</h2>
+      <p class="sub" id="ldS"></p>
+      <div class="tabs" id="ldTabs"></div>
+      <div id="leaders"></div>
+    </div>
+  </div>
+  <div class="grid grid2">
+    <div class="card">
+      <h2>Age profile</h2>
+      <p class="sub" id="agS">Players by age on 26 Nov 2026.</p>
+      <div class="key" id="agKey"></div>
+      <div class="fig" id="age" style="min-height:260px"><svg role="img" aria-label="Column chart of players by age"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Passports in the squad</h2>
+      <p class="sub" id="ctS"></p>
+      <div id="cit"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Where the teams play</h2>
+    <p class="sub" id="mpS"></p>
+    <div class="key" id="mpKey"></div>
+    <div class="fig" id="map"><svg role="img" aria-label="Map of team home cities"></svg></div>
+  </div>
+  <div class="grid grid2">
+    <div class="card">
+      <h2>Team scoring</h2>
+      <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
+      <div class="teams" id="teams"></div>
+    </div>
+    <div class="card">
+      <h2>Team efficiency</h2>
+      <p class="sub"><span class="nT2">Efficiency per game, all 53 teams</span>. Click a team to select it.</p>
+      <div class="teams" id="teams2"></div>
+    </div>
+  </div>
+  <footer>Source: FIBA, fiba.basketball, EuroCup Women 2026-27 team and player pages, data as of <span id="asof2">26 Nov 2026</span>. Efficiency is FIBA's: points + rebounds + assists + steals + blocks − missed shots − turnovers. Players on a roster who have not played yet appear only with the 0+ games filter, with all stats at zero. A player listed with † has left the team's current roster. Team home cities are not in the FIBA data; they were added from public information on each club. Basemap: Natural Earth via world-atlas. Flags: flag-icons.</footer>
+</div></main>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+{
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f1=d3.format('.1f'),pct=d3.format('.0%');
+const S={lc:'',cit:'',team:-1,pos:'A',gp:2,q:'',metric:'eff',sort:'eff',dir:-1,all:false};
+const M=[['eff','Efficiency'],['pts','Points'],['ast','Assists'],['reb','Rebounds'],['stl','Steals'],['blk','Blocks'],['fg','FG%'],['min','Minutes']];
+const tip=document.getElementById('tip');
+let D,TEAMS,TC,CN,P=[],TM=[];
+const pg=(p,k)=>p.gp?p[k]/p.gp:0;
+const showTip=(e,html)=>{tip.innerHTML=html;tip.style.opacity=1;const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px'};
+const hideTip=()=>tip.style.opacity=0;
+const pname=p=>esc(p.n)+(p.gone?' †':'');
+
+let GEO,CITY,FL={},ASOF='';
+Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r.json()),fetch('flags.json').then(r=>r.json()).catch(()=>({}))]).then(([d,g,f])=>{FL=f;D=d.players;TEAMS=d.teams;ASOF=d3.timeFormat('%-d %b %Y')(new Date(d.asof+'T12:00:00'));TC=d.tc;CN=d.cn;CITY=d.city;GEO=g;init()});
+
+function init(){
+  const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
+  document.getElementById('title').textContent=`${played.length} players from ${nc} countries in ${nt} teams have stepped on court so far`;
+  document.getElementById('upd').textContent='last updated '+ASOF;document.getElementById('asof2').textContent=ASOF;
+  document.querySelector('.nT').textContent=`Points per game, all ${nt} teams`;document.querySelector('.nT2').textContent=`Efficiency per game, all ${nt} teams`;
+  const sel=document.getElementById('fTeam'),lc=document.getElementById('fLc'),ct=document.getElementById('fCit');
+  const cname=k=>CN[k]||k;
+  const lcs=d3.rollups(TC,v=>v.length,k=>k).sort((a,b)=>cname(a[0]).localeCompare(cname(b[0])));
+  lc.insertAdjacentHTML('beforeend',lcs.map(([k,n])=>`<option value="${esc(k)}">${esc(cname(k))} (${n} team${n>1?'s':''})</option>`).join(''));
+  const cts=d3.rollups(D.flatMap(p=>p.c),v=>v.length,k=>k).sort((a,b)=>cname(a[0]).localeCompare(cname(b[0])));
+  ct.insertAdjacentHTML('beforeend',cts.map(([k,n])=>`<option value="${esc(k)}">${esc(cname(k))} (${n})</option>`).join(''));
+  fillTeams();
+  lc.onchange=()=>{S.lc=lc.value;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc)S.team=-1;fillTeams();update()};
+  ct.onchange=()=>{S.cit=ct.value;update()};
+  sel.onchange=()=>{S.team=+sel.value;update()};
+  document.querySelectorAll('#fPos button').forEach(b=>b.onclick=()=>{S.pos=b.dataset.v;document.querySelectorAll('#fPos button').forEach(x=>x.setAttribute('aria-pressed',x===b));update()});
+  document.getElementById('fClr').onclick=()=>{Object.assign(S,{lc:'',cit:'',team:-1,pos:'A',gp:2});lc.value='';ct.value='';document.getElementById('fGp').value='2';document.querySelectorAll('#fPos button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='A'));fillTeams();update()};
+  document.getElementById('fGp').onchange=e=>{S.gp=+e.target.value;update()};
+  document.getElementById('ldTabs').innerHTML=M.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.metric}">${l}</button>`).join('');
+  document.querySelectorAll('#ldTabs button').forEach(b=>b.onclick=()=>{S.metric=b.dataset.k;document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));leaders()});
+  // team aggregates (independent of filters)
+  const g=d3.group(D,p=>p.t);
+  TM=TEAMS.map((n,i)=>{const ps=g.get(i)||[];const gp=d3.max(ps,p=>p.gp)||0;return{i,n,gp,ppg:gp?d3.sum(ps,p=>p.pts)/gp:0,epg:gp?d3.sum(ps,p=>p.eff)/gp:0}});
+  for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
+  update();
+}
+const posOk=p=>S.pos==='A'||p.p===S.pos;
+function fillTeams(){
+  const sel=document.getElementById('fTeam'),ids=TEAMS.map((t,i)=>i).filter(i=>!S.lc||TC[i]===S.lc);
+  sel.innerHTML=`<option value="-1">All ${ids.length} teams${S.lc?' in '+esc(CN[S.lc]||S.lc):''}</option>`+ids.map(i=>`<option value="${i}">${esc(TEAMS[i])}</option>`).join('');
+  sel.value=S.team;
+}
+const scope=()=>(S.team>=0?'at '+TEAMS[S.team]:S.lc?'at teams in '+(CN[S.lc]||S.lc):'in the competition')+(S.cit?', with '+(CN[S.cit]||S.cit)+' citizenship':'');
+function update(){
+  P=D.filter(p=>p.gp>=S.gp&&posOk(p)&&(!S.lc||TC[p.t]===S.lc)&&(!S.cit||p.c.includes(S.cit)));
+  figs();scatter();leaders();ages();cits();map();teams();counts();
+  document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
+}
+const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
+function counts(){
+  const cname=k=>CN[k]||k;
+  const tl=d3.rollup(D.filter(p=>mt(p,['lc','team'])),v=>new Set(v.map(p=>p.t)).size,p=>TC[p.t]);
+  for(const o of document.getElementById('fLc').options){if(!o.value)continue;const n=tl.get(o.value)||0;o.textContent=`${cname(o.value)} (${n} team${n===1?'':'s'})`;o.disabled=!n&&o.value!==S.lc}
+  const cc=d3.rollup(D.filter(p=>mt(p,['cit'])).flatMap(p=>p.c),v=>v.length,k=>k);
+  for(const o of document.getElementById('fCit').options){if(!o.value)continue;const n=cc.get(o.value)||0;o.textContent=`${cname(o.value)} (${n})`;o.disabled=!n&&o.value!==S.cit}
+}
+const inScope=p=>S.team<0||p.t===S.team;
+function figs(){
+  const ps=P.filter(inScope),c=new Set(ps.flatMap(p=>p.c));
+  const multi=ps.filter(p=>p.c.length>1).length;
+  const items=[[ps.length,`player${ps.length===1?'':'s'} with ${S.gp}+ games`+(filtOn()?' '+scope():'')],
+    [ps.length?f1(d3.median(ps,p=>p.age)):'–','median age'],
+    [ps.length?Math.round(d3.mean(ps.filter(p=>p.h),p=>p.h)||0)+' cm':'–','average height, where listed'],
+    [c.size,'citizenships'],[ps.length?pct(multi/ps.length):'–','hold two or more passports']];
+  document.getElementById('figs').innerHTML=items.map(([v,l])=>`<div><span class="num">${esc(v)}</span><span>${esc(l)}</span></div>`).join('');
+}
+function scatter(){
+  const box=document.getElementById('sc'),svg=box.querySelector('svg');if(!D)return;
+  const W=box.clientWidth,H=box.clientHeight,narrow=W<520,m={t:10,r:12,b:38,l:narrow?32:42};
+  const x=d3.scaleLinear().domain([0,40]).range([m.l,W-m.r]);
+  const y=d3.scaleLinear().domain(d3.extent(D,p=>pg(p,'eff'))).nice().range([H-m.b,m.t]);
+  const sel=filtOn(),q=S.q,M1=new Set(P.filter(inScope));
+  const hit=p=>q&&p.n.toLowerCase().includes(q);
+  const pts=D.filter(p=>p.gp>=S.gp).map(p=>({p,x:x(pg(p,'min')),y:y(pg(p,'eff')),on:sel?M1.has(p):true,h:hit(p)}));
+  pts.sort((a,b)=>(a.on-b.on)||(a.h-b.h));
+  const xt=x.ticks(narrow?4:8),yt=y.ticks(narrow?5:8);
+  let s=`<g>${yt.map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${m.l-8}" y="${y(t)}" dy=".32em" text-anchor="end" font-size="12" fill="var(--ink2)">${t}</text>`).join('')}</g>`;
+  s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
+  s+=xt.map(t=>`<text x="${x(t)}" y="${H-m.b+18}" text-anchor="middle" font-size="12" fill="var(--ink2)">${t}</text>`).join('');
+  s+=`<text x="${W-m.r}" y="${H-4}" text-anchor="end" font-size="12" fill="var(--ink2)">Minutes per game →</text>`;
+  s+=`<text x="${m.l}" y="${m.t-0}" dy="-2" font-size="12" fill="var(--ink2)" text-anchor="start" transform="translate(4,12)">↑ Efficiency per game</text>`;
+  s+=pts.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="${d.h?6:4.5}" fill="${d.h?'var(--ink)':d.on?(sel?'var(--hi)':'var(--all)'):'var(--lo)'}" stroke="var(--bg)" stroke-width="2" ${d.on||d.h?'':'opacity=".75"'}/>`).join('');
+  // selective labels: top 3 by eff among highlighted set, plus search hits (max 6)
+  const lab=[...pts.filter(d=>d.on).sort((a,b)=>b.p.eff/b.p.gp-a.p.eff/a.p.gp).slice(0,narrow?2:3),...pts.filter(d=>d.h).slice(0,6)];
+  const seen=new Set();
+  s+=lab.filter(d=>!seen.has(d)&&seen.add(d)).map(d=>{const left=d.x>W-140;return`<text x="${d.x+(left?-9:9)}" y="${d.y}" dy=".32em" text-anchor="${left?'end':'start'}" font-size="13" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${esc(d.p.n.split(' ').slice(-1)[0])}</text>`}).join('');
+  s+=`<rect id="scHit" x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent"/>`;
+  svg.innerHTML=s;
+  document.getElementById('scKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${esc(flabel())}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
+  const del=d3.Delaunay.from(pts,d=>d.x,d=>d.y),r=svg.querySelector('#scHit');
+  r.onpointermove=e=>{const b=svg.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top,i=del.find(mx,my),d=pts[i];
+    if(!d||Math.hypot(d.x-mx,d.y-my)>30)return hideTip();const p=d.p;
+    showTip(e,`<b>${f1(pg(p,'eff'))}</b> eff · <b>${f1(pg(p,'min'))}</b> min<br>${pname(p)}<br>${esc(TEAMS[p.t])} · ${f1(pg(p,'pts'))} pts, ${f1(pg(p,'reb'))} reb, ${f1(pg(p,'ast'))} ast${p.gone?'<br>† No longer on the team’s current roster':''}`)};
+  r.onpointerleave=hideTip;
+}
+const flags=p=>p.c.map(c=>{const n=esc(CN[c]||c);return FL[c]?`<img class="flag" src="${FL[c]}" alt="${n}" title="${n}">`:`<span class="flagx" title="${n}">${esc(c)}</span>`}).join('');
+function leaders(){
+  const k=S.metric,fg=k==='fg',lab=M.find(m=>m[0]===k)[1];
+  const v=p=>fg?(p.fga?p.fgm/p.fga:0):pg(p,k),fmt=x=>fg?f1(x*100)+'%':f1(x);
+  const ps=P.filter(p=>inScope(p)&&(!fg||(p.gp&&p.fga/p.gp>=3))).sort((a,b)=>v(b)-v(a)).slice(0,10);
+  document.getElementById('ldT').textContent=fg?'Field goal %':lab+' per game';
+  document.getElementById('ldS').textContent='Top 10 '+scope()+`, ${S.gp}+ games`+(fg?', at least 3 field goal attempts per game.':'.');
+  const mx=d3.max(ps,v)||1;
+  document.getElementById('leaders').classList.toggle('fgm',fg);
+  document.getElementById('leaders').innerHTML=ps.length?ps.map(p=>`<div class="row"><div class="who">${pname(p)}${flags(p)} <small>— ${p.gp} game${p.gp===1?'':'s'} — ${esc(TEAMS[p.t])} (${esc(TC[p.t])})</small></div><div class="val">${fg?`<span class="fp">${fmt(v(p))}</span><small class="fa">(${p.fgm}/${p.fga})</small>`:fmt(v(p))}</div><div class="bar ${S.team<0?'all':''}" style="width:${Math.max(1,v(p)/mx*100)}%"></div></div>`).join('')+(ps.some(p=>p.gone)?'<p class="note">† No longer on the team’s current FIBA roster; games played this season still count.</p>':''):'<div class="empty">No players match these filters.</div>';
+}
+function ages(){
+  const box=document.getElementById('age'),svg=box.querySelector('svg');if(!D)return;
+  const W=box.clientWidth,H=box.clientHeight,m={t:22,r:6,b:30,l:30};
+  const sel=S.team>=0||S.lc||S.cit||S.pos!=='A',tm=P.filter(inScope),base=D.filter(p=>p.gp>=S.gp);
+  const bins=d3.range(15,39).map(a=>({a,n:base.filter(p=>Math.floor(p.age)===a).length,k:tm.filter(p=>Math.floor(p.age)===a).length}));
+  const x=d3.scaleBand().domain(bins.map(b=>b.a)).range([m.l,W-m.r]).paddingInner(.18);
+  const y=d3.scaleLinear().domain([0,d3.max(bins,b=>b.n)||1]).nice().range([H-m.b,m.t]);
+  const bw=Math.min(24,x.bandwidth()),off=(x.bandwidth()-bw)/2,rad=Math.min(4,bw/2);
+  const col=(x0,top,bot,c,round)=>{const h=bot-top;if(h<=0)return'';const r=round?Math.min(rad,h):0;return`<path d="M${x0},${bot}V${top+r}Q${x0},${top} ${x0+r},${top}H${x0+bw-r}Q${x0+bw},${top} ${x0+bw},${top+r}V${bot}Z" fill="${c}"/>`};
+  let s=y.ticks(4).filter(Number.isInteger).map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${m.l-6}" y="${y(t)}" dy=".32em" text-anchor="end" font-size="12" fill="var(--ink2)">${t}</text>`).join('');
+  s+=bins.map(b=>{if(!b.n)return'';const x0=x(b.a)+off,top=y(b.n),base=y(0);let o='';
+    if(!sel)o=col(x0,top,base,'var(--all)',1);
+    else{const tk=y(b.k);
+      if(b.k<b.n)o+=col(x0,top,b.k?tk-2:base,'var(--lo)',1);
+      if(b.k){o+=col(x0,tk,base,'var(--hi)',b.k===b.n);
+        o+=`<text x="${x0+bw/2}" y="${top-6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${b.k}</text>`}}
+    return o+`<rect class="ab" data-a="${b.a}" data-n="${b.n}" data-k="${b.k}" x="${x(b.a)}" y="${m.t}" width="${x.bandwidth()}" height="${y(0)-m.t}" fill="transparent"/>`}).join('');
+  s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
+  const every=W<520?5:2;
+  s+=bins.filter(b=>b.a%every===0).map(b=>`<text x="${x(b.a)+x.bandwidth()/2}" y="${H-m.b+16}" text-anchor="middle" font-size="12" fill="var(--ink2)">${b.a}</text>`).join('');
+  svg.innerHTML=s;
+  const PN={G:'guards',F:'forwards',C:'centers'};
+  const lbl=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?PN[S.pos]:''].filter(Boolean).join(' · ');
+  const L=lbl.charAt(0).toUpperCase()+lbl.slice(1),tn=esc(L);
+  svg.querySelectorAll('.ab').forEach(r=>{const n=+r.dataset.n,k=+r.dataset.k,a=r.dataset.a;
+    r.onpointermove=e=>showTip(e,sel?`<b>${k}</b> of ${n} player${n>1?'s':''} aged ${a}<br>${tn}`:`<b>${n}</b> player${n>1?'s':''}<br>aged ${a}`);r.onpointerleave=hideTip});
+  document.getElementById('agKey').innerHTML=sel?`<span><i style="background:var(--hi)"></i>${tn}</span><span><i style="background:var(--lo)"></i>Other players</span>`:'';
+  const yg=tm.filter(p=>p.age<20).length;
+  document.getElementById('agS').textContent=sel?`All ${base.length} players (${S.gp}+ games) by age on ${ASOF}; the ${tm.length} matching your filters in magenta, with their count above. ${yg} of them ${yg===1?'is':'are'} under 20.`:`Players by age on ${ASOF}. ${yg} of ${tm.length} ${yg===1?'is':'are'} under 20.`;
+}
+const filtOn=()=>S.team>=0||S.lc||S.cit||S.pos!=='A';
+const flabel=()=>{const l=[S.team>=0?TEAMS[S.team]:S.lc?'Teams in '+(CN[S.lc]||S.lc):'',S.cit?(CN[S.cit]||S.cit)+' citizens':'',S.pos!=='A'?{G:'guards',F:'forwards',C:'centers'}[S.pos]:''].filter(Boolean).join(' · ');return l.charAt(0).toUpperCase()+l.slice(1)};
+function pickTeam(i){S.team=S.team===i?-1:i;if(S.team>=0&&S.lc&&TC[S.team]!==S.lc){S.lc='';document.getElementById('fLc').value=''}fillTeams();update()}
+function map(){
+  const box=document.getElementById('map'),svg=box.querySelector('svg');if(!D||!GEO)return;
+  const W=box.clientWidth,H=box.clientHeight,pad=W<520?18:34;
+  const ix=TEAMS.map((t,i)=>i).filter(i=>CITY[i]);
+  const pts={type:'MultiPoint',coordinates:ix.map(i=>[CITY[i][2],CITY[i][1]])};
+  const pr=d3.geoConicConformal().parallels([38,58]).rotate([-15,0]).fitExtent([[pad,pad],[W-pad,H-pad]],pts);
+  const path=d3.geoPath(pr);
+  const on=filtOn(),cnt=d3.rollup(P.filter(inScope),v=>v.length,p=>p.t);
+  // one dot per place: teams whose cities fall within a few pixels are merged
+  const AREA={'Piraeus':'Athens area','Voula (Athens)':'Athens area','Athens':'Athens area'},pk=i=>AREA[CITY[i][0]]||CITY[i][0];
+  const cl=[...d3.group(ix,pk)].map(([name,m])=>{const xy=m.map(i=>pr([CITY[i][2],CITY[i][1]]));return{name,m,x:d3.mean(xy,p=>p[0]),y:d3.mean(xy,p=>p[1])}});
+  const base=W<520?4:5;
+  cl.forEach(c=>{c.n=c.m.length;c.r=base*Math.sqrt(c.n);c.c=d3.sum(c.m,i=>cnt.get(i)||0);c.sel=c.m.includes(S.team)});
+  cl.sort((a,b)=>b.r-a.r);
+  let s=`<defs><clipPath id="mclip"><rect width="${W}" height="${H}" rx="8"/></clipPath></defs><g clip-path="url(#mclip)"><rect width="${W}" height="${H}" fill="var(--sea)"/>`;
+  s+=GEO.features.map(f=>path(f)).filter(Boolean).map(d=>`<path d="${d}" fill="var(--land)" stroke="var(--bg)" stroke-width=".8"/>`).join('')+'</g>';
+  s+=cl.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${on?(d.c?'var(--hi)':'var(--lo)'):'var(--all)'}" stroke="${d.sel?'var(--ink)':'var(--bg)'}" stroke-width="${d.sel?2.5:1.5}"/>`).join('');
+  const city=d=>d.name;
+  const lab=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c).slice(0,W<520?2:4):[];
+  const sl=cl.find(d=>d.sel);if(sl&&!lab.includes(sl))lab.push(sl);
+  s+=lab.map(d=>`<text x="${d.x+d.r+5}" y="${d.y}" dy=".32em" font-size="13" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--bg)" stroke-width="4">${esc(city(d))}</text>`).join('');
+  s+=cl.map((d,k)=>`<circle class="mh" data-k="${k}" cx="${d.x}" cy="${d.y}" r="${Math.max(12,d.r+4)}" fill="transparent" style="cursor:pointer"/>`).join('');
+  svg.innerHTML=s;
+  svg.querySelectorAll('.mh').forEach(c=>{const d=cl[+c.dataset.k];
+    c.onpointermove=e=>showTip(e,`<b>${d.n}</b> team${d.n>1?'s':''} · ${esc(city(d))}, ${esc(CN[TC[d.m[0]]]||TC[d.m[0]])}<br>`+d.m.map(i=>esc(TEAMS[i])+(d.n>1&&CITY[i][0]!==d.name?` (${esc(CITY[i][0])})`:'')+(on?` — ${cnt.get(i)||0} matching`:'')).join('<br>')+(d.n>1?'<br><i>Click again for the next team</i>':''));
+    c.onpointerleave=hideTip;
+    c.onclick=()=>{hideTip();const k=d.m.indexOf(S.team);if(k<0)pickTeam(d.m[0]);else if(k<d.n-1)pickTeam(d.m[k+1]);else pickTeam(S.team)}});
+  const nc=new Set(CITY.map(c=>c[0])).size,nk=new Set(TC).size;
+  const top=on?cl.filter(d=>d.c).sort((a,b)=>b.c-a.c)[0]:null;
+  document.getElementById('mpS').textContent=(on?`Coloured: places with players matching your filters${top?`; most in ${city(top)} (${top.c})`:''}. `:`${TEAMS.length} teams in ${cl.length} places across ${nk} countries. `)+'Dot size shows the number of teams in each place. Click a dot to select a team.';
+  document.getElementById('mpKey').innerHTML=`<span><svg width="14" height="14" style="vertical-align:-2px"><circle cx="7" cy="7" r="${base*.9}" fill="var(--ink2)"/></svg> 1 team</span><span><svg width="18" height="18" style="vertical-align:-4px"><circle cx="9" cy="9" r="${base*Math.SQRT2*.9}" fill="var(--ink2)"/></svg> 2 teams</span><span><svg width="20" height="20" style="vertical-align:-5px"><circle cx="10" cy="10" r="${base*Math.sqrt(3)*.9}" fill="var(--ink2)"/></svg> 3 teams</span>`+(on?`<span><i style="background:var(--hi)"></i>Has matching players</span><span><i style="background:var(--lo)"></i>None</span>`:'');
+}
+function cits(){
+  const ps=P.filter(inScope),c=d3.rollups(ps.flatMap(p=>p.c),v=>v.length,k=>k).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,12);
+  const mx=c[0]?c[0][1]:1;
+  document.getElementById('ctS').textContent=`Top citizenships among ${ps.length} players. A dual national counts for each passport.`;
+  document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
+}
+function teams(){
+  for(const [id,k] of [['teams','ppg'],['teams2','epg']]){
+    const t=TM.filter(t=>t.gp).sort((a,b)=>b[k]-a[k]),mx=t[0][k];
+    const el=document.getElementById(id);
+    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${d[k]/mx*100}%"></div></div><span class="val">${f1(d[k])}</span></div>`).join('');
+    el.querySelectorAll('.trow').forEach(r=>{const go=()=>pickTeam(+r.dataset.i);r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
+    const on=el.querySelector('.on');if(on)el.scrollTop=on.offsetTop-el.offsetTop-el.clientHeight/2;
+  }
+}
+}
+</script>
+</body>
+</html>
