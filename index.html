@@ -149,7 +149,7 @@ footer{color:var(--ink2);font-size:13px}
   <div class="grid grid2">
     <div class="card">
       <h2>Team scoring</h2>
-      <p class="sub"><span class="nT">Total points, all 53 teams</span>. Click a team to select it.</p>
+      <p class="sub"><span class="nT">Points per game, all 53 teams</span>. Click a team to select it.</p>
       <div class="tabs" id="tsTabs"></div>
       <div class="teams" id="teams"></div>
     </div>
@@ -208,7 +208,7 @@ function init(){
   // team aggregates (independent of filters)
   const g=d3.group(D,p=>p.t);
   TM=TEAMS.map((n,i)=>{const ps=g.get(i)||[];const gp=d3.max(ps,p=>p.gp)||0;const sm=k=>d3.sum(ps,p=>p[k]),fgm=sm('fgm'),fga=sm('fga'),tpm=sm('tpm'),tpa=sm('tpa');
-    return{i,n,gp,epg:gp?sm('eff')/gp:0,pts:sm('pts'),fg:[fgm,fga],p2:[fgm-tpm,fga-tpa],p3:[tpm,tpa],ft:[sm('ftm'),sm('fta')]}});
+    return{i,n,gp,epg:gp?sm('eff')/gp:0,pts:gp?sm('pts')/gp:0,fg:[fgm,fga],p2:[fgm-tpm,fga-tpa],p3:[tpm,tpa],ft:[sm('ftm'),sm('fta')]}});
   document.getElementById('tsTabs').innerHTML=TSM.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.ts}">${l}</button>`).join('');
   document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams()});
   for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
@@ -366,8 +366,8 @@ function cits(){
   document.getElementById('cit').innerHTML=c.length?c.map(([k,n])=>`<div class="row"><div class="who">${esc(k)}${flags({c:[k]})} <small>— ${pct(n/ps.length)} of players</small></div><div class="val">${n}</div><div class="bar ${S.team<0?'all':''}" style="width:${n/mx*100}%"></div></div>`).join(''):'<div class="empty">No players match these filters.</div>';
 }
 // team scoring metrics: total points, then shooting percentages with made/attempted
-const TSM=[['pts','Total points'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'],['ft','FT %']];
-const TSS={pts:'Total points',fg:'Field goal % (made/attempted)',p2:'2-point % (made/attempted)',p3:'3-point % (made/attempted)',ft:'Free throw % (made/attempted)'};
+const TSM=[['pts','Points per game'],['fg','FG%'],['p2','2-pt %'],['p3','3-pt %'],['ft','FT %']];
+const TSS={pts:'Points per game',fg:'Field goal % (made/attempted)',p2:'2-point % (made/attempted)',p3:'3-point % (made/attempted)',ft:'Free throw % (made/attempted)'};
 function teams(){
   const pc=S.ts!=='pts',nt=TM.filter(t=>t.gp).length;
   document.querySelector('.nT').textContent=`${TSS[S.ts]}, all ${nt} teams`;
@@ -375,7 +375,7 @@ function teams(){
     const pct=id==='teams'&&pc,vv=d=>pct?(d[k][1]?d[k][0]/d[k][1]:0):d[k];
     const t=TM.filter(t=>t.gp).sort((a,b)=>vv(b)-vv(a)),mx=vv(t[0])||1;
     const el=document.getElementById(id);el.classList.toggle('tpct',pct);
-    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${vv(d)/mx*100}%"></div></div><span class="val">${pct?`<span class="fp">${f1(vv(d)*100)}%</span><small class="fa">(${d[k][0]}/${d[k][1]})</small>`:k==='pts'?d[k]:f1(d[k])}</span></div>`).join('');
+    el.innerHTML=t.map((d,i)=>`<div class="trow ${d.i===S.team?'on':''}" tabindex="0" role="button" data-i="${d.i}"><span class="rk">${i+1}</span><div class="tb"><span>${esc(d.n)}${flags({c:[TC[d.i]]})} <small style="color:var(--ink2)">— ${d.gp} games</small></span><div class="bar" style="width:${vv(d)/mx*100}%"></div></div><span class="val">${pct?`<span class="fp">${f1(vv(d)*100)}%</span><small class="fa">(${d[k][0]}/${d[k][1]})</small>`:f1(d[k])}</span></div>`).join('');
     el.querySelectorAll('.trow').forEach(r=>{const go=()=>pickTeam(+r.dataset.i);r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
     const on=el.querySelector('.on');if(on)el.scrollTop=on.offsetTop-el.offsetTop-el.clientHeight/2;
   }
