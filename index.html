@@ -41,6 +41,16 @@ header p{margin:0;color:var(--bandink2);max-width:68ch}
 .filters label{display:grid;gap:4px;font-size:13px;color:var(--bandink2)}
 select,input{font:inherit;font-size:16px;height:44px;border-radius:8px;border:1px solid #3a3b40;background:#1f2025;color:var(--bandink);padding:0 12px}
 input{width:min(240px,80vw)}
+.ktop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.shr{position:relative;flex:none}
+.shb{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:14px;font-weight:600;height:36px;padding:0 14px;border-radius:8px;border:1px solid #3a3b40;background:transparent;color:var(--bandink);cursor:pointer}
+.shb:hover,.shb[aria-expanded=true]{background:#1f2025}
+.shm{position:absolute;right:0;top:42px;z-index:20;min-width:190px;padding:6px;border-radius:10px;background:#1f2025;border:1px solid #3a3b40;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.shm[hidden]{display:none}
+.shm a,.shm button{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:9px 12px;border:0;border-radius:6px;background:none;color:var(--bandink);text-decoration:none;cursor:pointer}
+.shm a:hover,.shm button:hover,.shm a:focus-visible,.shm button:focus-visible{background:#2c2d33}
+.shm .ok{color:#c64fae}
+.filters select.act{border:2px solid #c64fae;padding:0 11px;background:#2a1a28}
 .clr{font:inherit;font-size:15px;height:44px;padding:0 16px;border-radius:8px;border:1px solid #3a3b40;background:transparent;color:var(--bandink);cursor:pointer;white-space:nowrap}.clr:disabled{opacity:.4;cursor:default}.filters>.clr{flex:none!important}
 button:focus-visible,select:focus-visible,input:focus-visible,.trow:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
 main.band{padding-top:20px}
@@ -103,7 +113,11 @@ footer{color:var(--ink2);font-size:13px}.credit{margin:0 0 6px;font-size:14px;co
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <div class="kicker">FIBA EuroCup Women 2026-27 · season to date · <span id="upd">last updated 26 Nov 2026</span></div>
+  <div class="ktop"><div class="kicker">FIBA EuroCup Women 2026-27 · season to date · <span id="upd">last updated 26 Nov 2026</span></div>
+  <div class="shr"><button class="shb" id="shB" aria-haspopup="true" aria-expanded="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+  <div class="shm" id="shM" hidden role="menu">
+    <a role="menuitem" data-s="email">Email</a><a role="menuitem" data-s="wa" target="_blank" rel="noopener">WhatsApp</a><a role="menuitem" data-s="fb" target="_blank" rel="noopener">Facebook</a><a role="menuitem" data-s="li" target="_blank" rel="noopener">LinkedIn</a><button role="menuitem" data-s="copy">Copy link</button>
+  </div></div></div>
   <h1 id="title">626 players from 63 countries in 53 teams have stepped on court so far</h1>
   <p id="lede">Pick a team to light it up; every chart follows your filters.</p>
 </div></header>
@@ -240,6 +254,7 @@ function init(){
   document.getElementById('tsTabs').innerHTML=TSM.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.ts}">${l}</button>`).join('');
   document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams();toURL()});
   fromURL();fillTeams();
+  initShare();
   document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.k===S.metric));
   document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.k===S.ts));
   for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['hgt',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
@@ -272,6 +287,24 @@ function toURL(){
   const u=location.pathname+(q.toString()?'?'+q.toString().replace(/%2C/g,','):'')+location.hash;
   if(u!==location.pathname+location.search+location.hash)try{history.replaceState(null,'',u)}catch(e){}
 }
+// ---- share: phone share sheet on touch devices, otherwise a small menu; always shares the current view ----
+function initShare(){
+  const b=document.getElementById('shB'),m=document.getElementById('shM'),T='Explore FIBA EuroCup Women 2026-27 statistics';
+  const close=()=>{m.hidden=true;b.setAttribute('aria-expanded','false')};
+  const links=()=>{const u=location.href,e=encodeURIComponent;
+    const h={email:`mailto:?subject=${e(T)}&body=${e(T+'\n'+u)}`,wa:`https://wa.me/?text=${e(T+' '+u)}`,fb:`https://www.facebook.com/sharer/sharer.php?u=${e(u)}`,li:`https://www.linkedin.com/sharing/share-offsite/?url=${e(u)}`};
+    m.querySelectorAll('a').forEach(a=>a.href=h[a.dataset.s])};
+  b.onclick=async e=>{e.stopPropagation();
+    if(navigator.share&&matchMedia('(pointer:coarse)').matches){try{await navigator.share({title:T,url:location.href})}catch(x){}return}
+    if(!m.hidden)return close();links();m.hidden=false;b.setAttribute('aria-expanded','true')};
+  const cp=m.querySelector('[data-s=copy]');
+  cp.onclick=async e=>{e.stopPropagation();const u=location.href;
+    try{await navigator.clipboard.writeText(u)}catch(x){const t=document.createElement('textarea');t.value=u;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}
+    cp.textContent='Link copied';cp.classList.add('ok');setTimeout(()=>{cp.textContent='Copy link';cp.classList.remove('ok');close()},1200)};
+  m.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setTimeout(close,50)));
+  document.addEventListener('click',e=>{if(!m.hidden&&!m.contains(e.target))close()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!m.hidden){close();b.focus()}});
+}
 const posOk=p=>S.pos==='A'||p.p===S.pos;
 const ageOk=p=>!S.age||(p.age!=null&&Math.floor(p.age)>=S.age&&Math.floor(p.age)<=S.age+4);
 function fillTeams(){
@@ -289,6 +322,7 @@ function update(){
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
   const na=[S.gp!==2,S.stg,S.lc,S.team>=0,S.pos!=='A',S.cit,S.age].filter(Boolean).length;
   document.getElementById('fTogL').textContent=na?`Filters · ${na} active`:'Filters';
+  for(const [id,on] of [['fGp',S.gp!==2],['fStg',S.stg],['fLc',S.lc],['fTeam',S.team>=0],['fPos',S.pos!=='A'],['fCit',S.cit],['fAge',S.age]])document.getElementById(id).classList.toggle('act',!!on);
   toURL();
 }
 const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
