@@ -221,7 +221,7 @@ Promise.all([fetch('data.json').then(r=>r.json()),fetch('europe.json').then(r=>r
 
 function init(){
   const played=D.filter(p=>p.gp>0),nc=new Set(played.flatMap(p=>p.c)).size,nt=TEAMS.length;
-  document.getElementById('title').textContent=`${played.length} players from ${nc} nationalities in ${nt} teams have stepped on court so far`;
+  HDEF=`${played.length} players from ${nc} nationalities in ${nt} teams have stepped on court so far`;document.getElementById('title').textContent=HDEF;
   document.getElementById('upd').textContent='last updated '+ASOF;document.getElementById('asof2').textContent=ASOF;
   document.querySelector('.nT2').textContent=`Efficiency per game, all ${nt} teams`;
   const sel=document.getElementById('fTeam'),lc=document.getElementById('fLc'),ct=document.getElementById('fCit');
@@ -305,6 +305,23 @@ function initShare(){
   document.addEventListener('click',e=>{if(!m.hidden&&!m.contains(e.target))close()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!m.hidden){close();b.focus()}});
 }
+// ---- headline follows the filters ("See how French guards at BCF Elfic Fribourg are doing …") ----
+const DEM={ALB:'Albanian',ALG:'Algerian',ARG:'Argentine',AUS:'Australian',AUT:'Austrian',AZE:'Azerbaijani',BEL:'Belgian',BEN:'Beninese',BIH:'Bosnian',BLR:'Belarusian',BRA:'Brazilian',BUL:'Bulgarian',CAN:'Canadian',CGO:'Congolese',CIV:'Ivorian',CMR:'Cameroonian',COD:'Congolese (DR Congo)',CRO:'Croatian',CYP:'Cypriot',CZE:'Czech',DEN:'Danish',DOM:'Dominican',EGY:'Egyptian',ENG:'English',ESP:'Spanish',EST:'Estonian',FIN:'Finnish',FRA:'French',GBR:'British',GBS:'Bissau-Guinean',GER:'German',GHA:'Ghanaian',GRE:'Greek',GUI:'Guinean',HUN:'Hungarian',IRL:'Irish',ISR:'Israeli',ITA:'Italian',JPN:'Japanese',KOS:'Kosovar',LAT:'Latvian',LTU:'Lithuanian',LUX:'Luxembourgish',MAR:'Moroccan',MEX:'Mexican',MLI:'Malian',MNE:'Montenegrin',NED:'Dutch',NGR:'Nigerian',NZL:'New Zealand',POL:'Polish',POR:'Portuguese',ROU:'Romanian',SEN:'Senegalese',SLO:'Slovenian',SRB:'Serbian',SSD:'South Sudanese',SUD:'Sudanese',SUI:'Swiss',SVK:'Slovak',SWE:'Swedish',TUR:'Turkish',UKR:'Ukrainian',USA:'American',VEN:'Venezuelan'};
+let HDEF='';
+function headline(){
+  const ev='EuroCup Women 2026-27',pl=S.cit||S.pos!=='A'||S.age,stgA={1:'qualifier-only ',2:PO?'main-stage-only ':'main-stage ',3:'play-off '}[S.stg]||'';
+  const teams=S.team>=0?TEAMS[S.team]:(S.stg||S.lc)?`${stgA}teams${S.lc?' in '+(CN[S.lc]||S.lc):''}`:'';
+  let t;
+  if(!pl&&!teams)t=HDEF;
+  else if(!pl&&S.team>=0)t=`See how ${teams} is doing in ${ev}`;
+  else{
+    const noun={A:'players',G:'guards',F:'forwards',C:'centers',U:'players'}[S.pos];
+    let sub=(S.cit&&DEM[S.cit]?DEM[S.cit]+' ':'')+noun+(S.age?` aged ${S.age}–${S.age+4}`:'')+(S.pos==='U'?' with no listed position':'')+(S.cit&&!DEM[S.cit]?` with ${CN[S.cit]||S.cit} citizenship`:'');
+    if(!pl)sub=teams;else if(teams)sub+=' at '+teams;
+    t=`See how ${sub} are doing in ${ev}`;
+  }
+  document.getElementById('title').textContent=t;
+}
 const posOk=p=>S.pos==='A'||p.p===S.pos;
 const ageOk=p=>!S.age||(p.age!=null&&Math.floor(p.age)>=S.age&&Math.floor(p.age)<=S.age+4);
 function fillTeams(){
@@ -323,6 +340,7 @@ function update(){
   const na=[S.gp!==2,S.stg,S.lc,S.team>=0,S.pos!=='A',S.cit,S.age].filter(Boolean).length;
   document.getElementById('fTogL').textContent=na?`Filters · ${na} active`:'Filters';
   for(const [id,on] of [['fGp',S.gp!==2],['fStg',S.stg],['fLc',S.lc],['fTeam',S.team>=0],['fPos',S.pos!=='A'],['fCit',S.cit],['fAge',S.age]])document.getElementById(id).classList.toggle('act',!!on);
+  headline();
   toURL();
 }
 const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
