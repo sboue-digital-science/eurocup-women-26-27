@@ -232,15 +232,45 @@ function init(){
   document.getElementById('fClr').onclick=()=>{Object.assign(S,{age:0,stg:0,lc:'',cit:'',team:-1,pos:'A',gp:2});lc.value='';document.getElementById('fStg').value='';ct.value='';document.getElementById('fGp').value='2';document.getElementById('fPos').value='A';document.getElementById('fAge').value='0';fillTeams();update()};
   document.getElementById('fGp').onchange=e=>{S.gp=+e.target.value;update()};
   document.getElementById('ldTabs').innerHTML=M.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.metric}">${l}</button>`).join('');
-  document.querySelectorAll('#ldTabs button').forEach(b=>b.onclick=()=>{S.metric=b.dataset.k;document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));leaders()});
+  document.querySelectorAll('#ldTabs button').forEach(b=>b.onclick=()=>{S.metric=b.dataset.k;document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));leaders();toURL()});
   // team aggregates (independent of filters)
   const g=d3.group(D,p=>p.t);
   TM=TEAMS.map((n,i)=>{const ps=g.get(i)||[];const gp=d3.max(ps,p=>p.gp)||0;const sm=k=>d3.sum(ps,p=>p[k]),fgm=sm('fgm'),fga=sm('fga'),tpm=sm('tpm'),tpa=sm('tpa');
     return{i,n,gp,epg:gp?sm('eff')/gp:0,pts:gp?sm('pts')/gp:0,fg:[fgm,fga],p2:[fgm-tpm,fga-tpa],p3:[tpm,tpa],ft:[sm('ftm'),sm('fta')]}});
   document.getElementById('tsTabs').innerHTML=TSM.map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===S.ts}">${l}</button>`).join('');
-  document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams()});
+  document.querySelectorAll('#tsTabs button').forEach(b=>b.onclick=()=>{S.ts=b.dataset.k;document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));teams();toURL()});
+  fromURL();fillTeams();
+  document.querySelectorAll('#ldTabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.k===S.metric));
+  document.querySelectorAll('#tsTabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.k===S.ts));
   for(const [id,fn] of [['sc',()=>scatter()],['age',()=>ages()],['hgt',()=>ages()],['map',()=>map()]]){const el=document.getElementById(id);new ResizeObserver(fn).observe(el)}
   update();
+}
+// ---- shareable links: the address carries the current view (team=…, stage=…, etc.) ----
+const slug=t=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const STGK={1:'qualifiers',2:'main',3:'playoffs'},POSK={G:'guards',F:'forwards',C:'centers',U:'unspecified'};
+const key=(o,v)=>Object.keys(o).find(k=>o[k]===v);
+function fromURL(){
+  const q=new URLSearchParams(location.search),g=k=>(q.get(k)||'').trim().toLowerCase(),opt=(id,v)=>[...document.getElementById(id).options].some(o=>o.value===String(v)&&!o.disabled);
+  const gp=g('games');if(gp!==''&&opt('fGp',+gp))S.gp=+gp;
+  const st=+key(STGK,g('stage'));if(st&&(st!==3||PO))S.stg=st;
+  const lc=g('league').toUpperCase();if(lc&&TC.includes(lc))S.lc=lc;
+  const ct=g('citizenship').toUpperCase();if(ct&&opt('fCit',ct))S.cit=ct;
+  const ps=key(POSK,g('position'));if(ps&&opt('fPos',ps))S.pos=ps;
+  const ag=parseInt(g('age'));if(ag&&opt('fAge',ag))S.age=ag;
+  const ti=TEAMS.findIndex(t=>slug(t)===g('team'));if(ti>=0&&(!S.lc||TC[ti]===S.lc)&&stgOk(ti))S.team=ti;
+  const ls=g('stat');if(M.some(m=>m[0]===ls))S.metric=ls;
+  const ts=g('scoring');if(TSM.some(m=>m[0]===ts))S.ts=ts;
+  document.getElementById('fGp').value=S.gp;document.getElementById('fStg').value=S.stg||'';document.getElementById('fLc').value=S.lc;
+  document.getElementById('fCit').value=S.cit;document.getElementById('fPos').value=S.pos;document.getElementById('fAge').value=S.age;
+}
+function toURL(){
+  const q=new URLSearchParams();
+  if(S.team>=0)q.set('team',slug(TEAMS[S.team]));
+  if(S.stg)q.set('stage',STGK[S.stg]);if(S.lc)q.set('league',S.lc);if(S.cit)q.set('citizenship',S.cit);
+  if(S.pos!=='A')q.set('position',POSK[S.pos]);if(S.age)q.set('age',`${S.age}-${S.age+4}`);if(S.gp!==2)q.set('games',S.gp);
+  if(S.metric!=='eff')q.set('stat',S.metric);if(S.ts!=='pts')q.set('scoring',S.ts);
+  const u=location.pathname+(q.toString()?'?'+q.toString().replace(/%2C/g,','):'')+location.hash;
+  if(u!==location.pathname+location.search+location.hash)try{history.replaceState(null,'',u)}catch(e){}
 }
 const posOk=p=>S.pos==='A'||p.p===S.pos;
 const ageOk=p=>!S.age||(p.age!=null&&Math.floor(p.age)>=S.age&&Math.floor(p.age)<=S.age+4);
@@ -259,6 +289,7 @@ function update(){
   document.getElementById('fClr').disabled=!filtOn()&&S.gp===2;
   const na=[S.gp!==2,S.stg,S.lc,S.team>=0,S.pos!=='A',S.cit,S.age].filter(Boolean).length;
   document.getElementById('fTogL').textContent=na?`Filters · ${na} active`:'Filters';
+  toURL();
 }
 const mt=(p,skip)=>p.gp>=S.gp&&(skip.includes('pos')||posOk(p))&&(skip.includes('age')||ageOk(p))&&(skip.includes('stg')||stgOk(p.t))&&(skip.includes('lc')||!S.lc||TC[p.t]===S.lc)&&(skip.includes('cit')||!S.cit||p.c.includes(S.cit))&&(skip.includes('team')||S.team<0||p.t===S.team);
 function counts(){
